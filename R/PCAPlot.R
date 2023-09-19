@@ -2,47 +2,35 @@
 #'
 #' @param CF CytoFlag object
 #' @param featMethod Which generated features to plot
-#' @param flagMethod Which flagging method to plot
-#' @param includeRef Whether to visualize reference data
-#' @param showFlags Whether to highlight anomalies (TRUE/FALSE)
+#' @param includeRef Whether to visualize reference data (default = "auto")
+#' @param flagMethod Which flagging method to plot (default = NULL)
+#' @param flagSlot Whether to use outlier or novelty flags (default = "auto")
 #' @param arrows Whether to plot loadings (TRUE/FALSE)
 #'
 #' @return PCA plot
-PCAPlot <- function(CF, featMethod, flagMethod, includeRef = "auto",
-                    showFlags = "auto", arrows = FALSE){
+PCAPlot <- function(CF, featMethod, includeRef = "auto", flagMethod = NULL, 
+                    flagSlot = "auto", arrows = FALSE){
   testFeatures <- CF$features$test[[featMethod]]
   featNames <- colnames(testFeatures)
   
-  if (includeRef == "auto"){
-    if ("ref" %in% names(CF$features)){
-      includeRef <- TRUE
-    }
-    else {
-      includeRef <- FALSE
-    }
+  # Check if reference is included in object
+  if (includeRef == "auto") {
+    includeRef <- "ref" %in% names(CF$features)
   }
-  # Detect if novelties and/or outliers have already been flagged
-  if (showFlags == "auto"){
-    if ("novelties" %in% names(CF)){
-      showFlags <- "novelty"
+  
+  if (!is.null(flagMethod)){
+    # Detect if novelties and/or outliers have already been flagged
+    if (flagSlot == "auto"){
+      if ("novelties" %in% names(CF)){
+        flagSlot <- "novelty"
+      }
+      else if ("outliers" %in% names(CF)){
+        flagSlot <- "outliers"
+      }
     }
-    else if ("outliers" %in% names(CF)){
-      showFlags <- "outlier"
-    }
-    else {
-      showFlags <- FALSE
-    }
+    testAnomaly <- CF[[flagSlot]][[flagMethod]]
   }
 
-  if (showFlags == "novelty"){
-    testAnomaly <- CF$novelties[[flagMethod]]
-  }
-  else if (showFlags == "outlier"){
-    testAnomaly <- CF$outliers[[flagMethod]]
-  }
-  
-  print(testFeatures)
-  
   if (includeRef){
     refFeatures <- CF$features$ref[[featMethod]]
     # Reduce to first two principal components
@@ -52,7 +40,7 @@ PCAPlot <- function(CF, featMethod, flagMethod, includeRef = "auto",
     testFeatures <- PCAOutput[["testFeatures"]]
     refFeatures <- PCAOutput[["refFeatures"]]
     refFeatures$category <- "reference"
-    if (showFlags != FALSE){
+    if (!is.null(flagMethod)){
       testFeatures$anomaly <- testAnomaly
       refFeatures$anomaly <- FALSE
     }
@@ -67,7 +55,7 @@ PCAPlot <- function(CF, featMethod, flagMethod, includeRef = "auto",
     testFeatures <- PCAOutput[["testFeatures"]]
     refFeatures <- PCAOutput[["refFeatures"]]
     testFeatures$category <- "test"
-    if (showFlags != FALSE){
+    if (!is.null(flagMethod)){
       testFeatures$anomaly <- testAnomaly
     }
     features <- testFeatures
@@ -77,7 +65,6 @@ PCAPlot <- function(CF, featMethod, flagMethod, includeRef = "auto",
   PC1_var <- PCAOutput[["PC1_var"]]
   PC2_var <- PCAOutput[["PC2_var"]]
 
-  print(testFeatures)
   # Plot
   loadScale <- 3
   p <- ggplot2::ggplot(features, ggplot2::aes(x = PC1, y = PC2, colour = category)) +
@@ -95,7 +82,7 @@ PCAPlot <- function(CF, featMethod, flagMethod, includeRef = "auto",
       ggplot2::annotate("text", x = (loadings$PC1*loadScale), y = (loadings$PC2*loadScale),
                label = loadings$variable)
   }
-  if (showFlags == FALSE){
+  if (is.null(flagMethod)){
     p <- p + ggplot2::geom_point(size = 3)
   }
   else {
