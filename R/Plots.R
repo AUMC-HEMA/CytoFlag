@@ -16,7 +16,7 @@ PrepareFeaturePlot <- function(CF, featMethod, includeRef = "auto",
     # Detect if novelties and/or outliers have already been flagged
     if (flagSlot == "auto"){
       if ("novelties" %in% names(CF)){
-        flagSlot <- "novelty"
+        flagSlot <- "novelties"
       }
       else if ("outliers" %in% names(CF)){
         flagSlot <- "outliers"
@@ -29,6 +29,71 @@ PrepareFeaturePlot <- function(CF, featMethod, includeRef = "auto",
               "testAnomaly" = testAnomaly))
 }
 
+
+#' Plot Heatmap
+#'
+#' @param CF CytoFlag object
+#' @param featMethod Which generated features to plot
+#' @param includeRef Whether to visualize reference data (default = "auto")
+#' @param flagMethod Which flagging method to plot (default = NULL)
+#' @param flagSlot Whether to use outlier or novelty flags (default = "auto")
+#'
+#' @return Heatmap plot
+PlotHeatmap <- function(CF, featMethod, includeRef = "auto", flagMethod = NULL, 
+                    flagSlot = "auto"){
+  features <- PrepareFeaturePlot(CF, featMethod, includeRef, flagMethod, flagSlot)
+  testFeatures <- features$testFeatures
+  featNames <- colnames(testFeatures)
+  refFeatures <- features$refFeatures
+  testAnomaly <- features$testAnomaly
+  
+  if (!is.null(refFeatures)){
+    refFeatures$category <- "reference"
+    testFeatures$category <- "test"
+    if (!is.null(testAnomaly)){
+      testFeatures$anomaly <- testAnomaly
+      refFeatures$anomaly <- FALSE
+    }
+    else {
+      testFeatures$anomaly <- "NA"
+      refFeatures$anomaly <- "NA"
+    }
+    features <- rbind(testFeatures, refFeatures)
+  }
+  else{
+    testFeatures$category <- "test"
+    if (!is.null(testAnomaly)){
+      testFeatures$anomaly <- testAnomaly
+    }
+    else{
+      testFeatures$anomaly <- "NA"
+    }
+    features <- testFeatures
+  }
+  
+  # Annotation data
+  annot_data <- features[,c("category", "anomaly")]
+  colnames(annot_data) <- c("category", "anomaly")
+  annot_colors <- list(category = c("reference" = "green",
+                                    "test" = "blue"),
+                       anomaly = c("NA" = "grey",
+                                   "TRUE" = "red",
+                                   "FALSE" = "blue"))
+
+  # Prepare pheatmap
+  mat <- as.matrix(features[,featNames])
+  rownames(mat) <- seq(1, nrow(mat))
+
+  # Plot
+  p <- ComplexHeatmap::pheatmap(mat[,featNames], cluster_cols = FALSE,
+                           color = viridis::viridis(100),
+                           show_rownames = TRUE, show_colnames = TRUE, 
+                           scale = "column",
+                           annotation_row = annot_data,
+                           annotation_colors = annot_colors)
+  return(p)
+}
+  
 
 #' Plot PCA
 #'
@@ -47,6 +112,7 @@ PlotPCA <- function(CF, featMethod, includeRef = "auto", flagMethod = NULL,
   featNames <- colnames(testFeatures)
   refFeatures <- features$refFeatures
   testAnomaly <- features$testAnomaly
+  print(testAnomaly)
   
   if (!is.null(refFeatures)){
     # Reduce to first two principal components
@@ -64,7 +130,6 @@ PlotPCA <- function(CF, featMethod, includeRef = "auto", flagMethod = NULL,
     features <- rbind(testFeatures, refFeatures)
   }
   else{
-    flagStrat <- "outlier"
     # Reduce to first two principal components
     PCAOutput <- reduceDim(testFeatures = testFeatures[,featNames], 
                            flagStrat = "outlier")
