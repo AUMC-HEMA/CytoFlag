@@ -8,7 +8,7 @@
 #' @param arrows Whether to plot loadings (TRUE/FALSE)
 #'
 #' @return PCA plot
-PCAPlot <- function(CF, featMethod, includeRef = "auto", flagMethod = NULL, 
+PlotPCA <- function(CF, featMethod, includeRef = "auto", flagMethod = NULL, 
                     flagSlot = "auto", arrows = FALSE){
   testFeatures <- CF$features$test[[featMethod]]
   featNames <- colnames(testFeatures)
