@@ -1,0 +1,5 @@
+/doc/
+/Meta/
+*.Rhistory
+.Rproj.user/
+CytoFlag.Rproj
