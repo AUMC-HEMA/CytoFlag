@@ -86,7 +86,7 @@ PlotHeatmap <- function(CF, featMethod, includeRef = "auto", flagMethod = NULL,
 
   # Plot
   p <- ComplexHeatmap::pheatmap(mat[,featNames], cluster_cols = FALSE,
-                           color = viridis::viridis(100),
+                           color = colorRampPalette(rev(c("red", "white", "blue")))(100), 
                            show_rownames = TRUE, show_colnames = TRUE, 
                            scale = "column",
                            annotation_row = annot_data,
