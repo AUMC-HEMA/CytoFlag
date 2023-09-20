@@ -164,6 +164,10 @@ Flag <- function(CF, featMethod = NULL, flagStrat = "auto", flagMethod = "KDE",
       threshold <- stats::quantile(ref_scores, 0.05)
       message("Predicting novelties using probability cut-off")
       novelties <- as.factor(ifelse(test_scores < threshold, TRUE, FALSE))
+      n <- length(novelties[novelties == TRUE])
+      perc <- (n / length(novelties)) * 100
+      fmt_str <- sprintf("Found %d novelties (%.1f%%)", n, perc)
+      message(fmt_str)
       CF$novelties$KDE <- novelties
     }
     else if (flagStrat == "outlier"){
@@ -172,6 +176,10 @@ Flag <- function(CF, featMethod = NULL, flagStrat = "auto", flagMethod = "KDE",
       test_scores <- ks::kde(x = testFeatures, eval.points = testFeatures)$estimate
       threshold <- stats::quantile(test_scores, 0.05)
       outliers <- as.factor(ifelse(test_scores >= 0.5, TRUE, FALSE))
+      n <- length(outliers[outliers == TRUE])
+      perc <- (n / length(outliers)) * 100
+      fmt_str <- sprintf("Found %d outliers (%.1f%%)", n, perc)
+      message(fmt_str)
       CF$outliers$KDE <- outliers
     }
   }
@@ -184,6 +192,10 @@ Flag <- function(CF, featMethod = NULL, flagStrat = "auto", flagMethod = "KDE",
       # Scores above 0.5 are most likely outliers according to the original paper
       # This also the default behavior in the sklearn implementation
       outliers <- as.factor(ifelse(scores >= 0.5, TRUE, FALSE))
+      n <- length(outliers[outliers == TRUE])
+      perc <- (n / length(outliers)) * 100
+      fmt_str <- sprintf("Found %d outliers (%.1f%%)", n, perc)
+      message(fmt_str)
       CF$outliers$forest <- outliers
     }
   }
