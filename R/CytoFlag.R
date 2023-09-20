@@ -18,6 +18,7 @@ CytoFlag <- function(){
 #' @return flowFrame
 ReadInput <- function(path, n = NULL){
   ff <- flowCore::read.FCS(path, which.lines = n)
+  ff <- PeacoQC::RemoveMargins(ff, channels)
   ff <- flowCore::compensate(ff, ff@description$SPILL)
   ff <- flowCore::transform(ff, flowCore::transformList(colnames(ff@description$SPILL), 
                                                         flowCore::arcsinhTransform(a = 0, b = 1/150, c = 0)))
