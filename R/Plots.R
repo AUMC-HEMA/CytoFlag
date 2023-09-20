@@ -112,8 +112,7 @@ PlotPCA <- function(CF, featMethod, includeRef = "auto", flagMethod = NULL,
   featNames <- colnames(testFeatures)
   refFeatures <- features$refFeatures
   testAnomaly <- features$testAnomaly
-  print(testAnomaly)
-  
+
   if (!is.null(refFeatures)){
     # Reduce to first two principal components
     PCAOutput <- reduceDim(testFeatures = testFeatures[,featNames], 
