@@ -102,11 +102,12 @@ PlotHeatmap <- function(CF, featMethod, includeRef = "auto", flagMethod = NULL,
 #' @param includeRef Whether to visualize reference data (default = "auto")
 #' @param flagMethod Which flagging method to plot (default = NULL)
 #' @param flagSlot Whether to use outlier or novelty flags (default = "auto")
-#' @param arrows Whether to plot loadings (TRUE/FALSE)
+#' @param arrows Whether to plot loadings (default = FALSE)
+#' @param labels Whether to plot labels of anomalies (default = TRUE)
 #'
 #' @return PCA plot
 PlotPCA <- function(CF, featMethod, includeRef = "auto", flagMethod = NULL, 
-                    flagSlot = "auto", arrows = FALSE){
+                    flagSlot = "auto", arrows = FALSE, labels = TRUE){
   features <- PrepareFeaturePlot(CF, featMethod, includeRef, flagMethod, flagSlot)
   testFeatures <- features$testFeatures
   featNames <- colnames(testFeatures)
@@ -120,6 +121,8 @@ PlotPCA <- function(CF, featMethod, includeRef = "auto", flagMethod = NULL,
                            refFeatures[,featNames])
     testFeatures <- PCAOutput[["testFeatures"]]
     refFeatures <- PCAOutput[["refFeatures"]]
+    testFeatures$index <- rownames(testFeatures)
+    refFeatures$index <- rownames(refFeatures)
     refFeatures$category <- "reference"
     if (!is.null(testAnomaly)){
       testFeatures$anomaly <- testAnomaly
@@ -133,6 +136,7 @@ PlotPCA <- function(CF, featMethod, includeRef = "auto", flagMethod = NULL,
     PCAOutput <- reduceDim(testFeatures = testFeatures[,featNames], 
                            flagStrat = "outlier")
     testFeatures <- PCAOutput[["testFeatures"]]
+    testFeatures$index <- rownames(testFeatures)
     refFeatures <- PCAOutput[["refFeatures"]]
     testFeatures$category <- "test"
     if (!is.null(testAnomaly)){
@@ -154,19 +158,31 @@ PlotPCA <- function(CF, featMethod, includeRef = "auto", flagMethod = NULL,
           plot.background = ggplot2::element_blank(), 
           panel.border = ggplot2::element_rect(colour = "black", fill = NA, 
                                       linewidth = 0.5))
-  if (arrows){
-    p <- p + ggplot2::geom_segment(data = loadings, ggplot2::aes(x = 0, y = 0, xend = (PC1*loadScale), 
-                                               yend = (PC2*loadScale)),
-                          arrow = ggplot2::arrow(length = ggplot2::unit(1/2, "picas")), 
-                          color = "black") +
-      ggplot2::annotate("text", x = (loadings$PC1*loadScale), y = (loadings$PC2*loadScale),
-               label = loadings$variable)
-  }
   if (is.null(testAnomaly)){
     p <- p + ggplot2::geom_point(size = 3)
   }
   else {
     p <- p + ggplot2::geom_point(size = 3, ggplot2::aes(shape = anomaly))
+    
+    if (labels){
+      p <- p + ggplot2::geom_label(data = subset(features, anomaly == TRUE),
+                                   ggplot2::aes(label = index), 
+                                   nudge_x = 0.3, nudge_y = 0.3, 
+                                   label.padding = unit(0.2, "lines"), 
+                                   label.size = 0.25, # Add border of size 0.25
+                                   label.r = unit(0.1, "lines"), # Round corners slightly
+                                   fill = "white", 
+                                   color = "black")
+    }
+  }
+  
+  if (arrows){
+    p <- p + ggplot2::geom_segment(data = loadings, ggplot2::aes(x = 0, y = 0, xend = (PC1*loadScale), 
+                                                                 yend = (PC2*loadScale)),
+                                   arrow = ggplot2::arrow(length = ggplot2::unit(1/2, "picas")), 
+                                   color = "black") +
+      ggplot2::annotate("text", x = (loadings$PC1*loadScale), y = (loadings$PC2*loadScale),
+                        label = loadings$variable)
   }
   return(p)
 }
