@@ -225,7 +225,7 @@ PlotAnomaly <- function(CF, idx, channel, n = 500, includeRef = "auto"){
   
   ggplot2::ggplot(all_data, ggplot2::aes(x = .data[[channel]], y = .data[["index"]],
                                          fill = .data[["category"]])) +
-    ggridges::geom_density_ridges(scale = 5) +
+    ggridges::geom_density_ridges(scale = 5, alpha = 0.7) +
     ggplot2::scale_fill_manual(values = c("Outlier" = "red", "Reference" = "blue",
                                           "Other test samples" = "blue")) +
     ggplot2::labs(y = "Index") +
