@@ -196,64 +196,6 @@ Bin <- function(input, agg, channels){
 }
 
 
-#' Calculate peak features
-#'
-#' @param input List of FCS file paths
-#' @param channels Channels to calculate features for
-#'
-#' @return Dataframe with features (columns) for samples (rows)
-PeakExtraction <- function(input, channels){
-  all_features <- list()
-  for (path in input){
-    ff <- ReadInput(path, n = NULL)
-    features <- list()
-    for (channel in channels){
-      # Identify the 0.01 and 0.999 quantiles to cut the KDE density
-      # This prevents the findpeaks function from identifying small peaks at extremes
-      min_x <- quantile(ff@exprs[,channel], 0.001)
-      max_x <- quantile(ff@exprs[,channel], 0.999)
-      # Calculate y-axis density
-      dens <- stats::density(ff@exprs[,channel], from = min_x, to = max_x)
-      # Identify peaks
-      peaks <- pracma::findpeaks(dens$y, minpeakheight = 0.01)
-      # Account for cases where only one peak is detected
-      if (nrow(peaks) == 1){
-        min_x_peak <- peaks[1,]
-        max_x_peak <- peaks[1,]
-        min_y_peak <- peaks[1,]
-        max_y_peak <- peaks[1,]
-      }
-      else{
-        # Identify the smallest and largest peak based on the x-axis
-        min_x_peak <- peaks[1,]
-        max_x_peak <- peaks[nrow(peaks),]
-        # Identify the smallest and largest peak based on the y-axis
-        sorted_idx <- order(peaks[, 1])
-        sorted_peaks <- peaks[sorted_idx, ]
-        min_y_peak <- sorted_peaks[1,]
-        max_y_peak <- sorted_peaks[nrow(peaks),]
-      }
-      # Get the expression values of all the peaks
-      features[paste0(channel,"_min_x_peak_center")] <- dens$x[min_x_peak[2]]
-      features[paste0(channel,"_min_x_peak_start")] <- dens$x[min_x_peak[3]]
-      features[paste0(channel,"_min_x_peak_end")] <- dens$x[min_x_peak[4]]
-      features[paste0(channel,"_max_x_peak_center")] <- dens$x[max_x_peak[2]]
-      features[paste0(channel,"_max_x_peak_start")] <- dens$x[max_x_peak[3]]
-      features[paste0(channel,"_max_x_peak_end")] <- dens$x[max_x_peak[4]]
-      features[paste0(channel,"_min_y_peak_center")] <- dens$x[min_y_peak[2]]
-      features[paste0(channel,"_min_y_peak_start")] <- dens$x[min_y_peak[3]]
-      features[paste0(channel,"_min_y_peak_end")] <- dens$x[min_y_peak[4]]
-      features[paste0(channel,"_max_y_peak_center")] <- dens$x[max_y_peak[2]]
-      features[paste0(channel,"_max_y_peak_start")] <- dens$x[max_y_peak[3]]
-      features[paste0(channel,"_max_y_peak_end")] <- dens$x[max_y_peak[4]]
-    }
-    all_features[[path]] <- features
-  }
-  features <- data.frame(dplyr::bind_rows(all_features), check.names = FALSE)
-  return(features)
-}
-
-
 #' Reduce features to first two principal components
 #'
 #' @param testFeatures Dataframe of features from test samples
