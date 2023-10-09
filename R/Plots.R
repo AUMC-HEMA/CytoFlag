@@ -160,6 +160,17 @@ PlotPCA <- function(CF, featMethod, includeRef = "auto", flagMethod = NULL,
                                       linewidth = 0.5))
   if (is.null(testAnomaly)){
     p <- p + ggplot2::geom_point(size = 3)
+    
+    if (labels){
+      p <- p + ggplot2::geom_label(data = features,
+                                   ggplot2::aes(label = index), 
+                                   nudge_x = 0.1, nudge_y = 0.1, 
+                                   label.padding = unit(0.2, "lines"), 
+                                   label.size = 0.25, # Add border of size 0.25
+                                   label.r = unit(0.1, "lines"), # Round corners slightly
+                                   fill = "white", 
+                                   color = "black")
+    }
   }
   else {
     p <- p + ggplot2::geom_point(size = 3, ggplot2::aes(shape = anomaly))
