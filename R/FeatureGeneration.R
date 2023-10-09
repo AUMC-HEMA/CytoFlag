@@ -15,22 +15,24 @@ FeatureGeneration <- function(CF, channels, featMethod = "summary",
     # TO-DO: CHECK IF NOT EMPTY
     # For summary statistics, use the paths directly
     if ("ref_paths" %in% names(CF)){
-      CF$features$ref$summary <- SummaryStats(CF$ref_paths, channels)
+      CF$features$ref$summary <- SummaryStats(CF, CF$ref_paths, channels)
     }
     if ("test_paths" %in% names(CF)){
-      CF$features$test$summary <- SummaryStats(CF$test_paths, channels)
+      CF$features$test$summary <- SummaryStats(CF, CF$test_paths, channels)
     }
     return(CF)
   }
   
-  if (featMethod == "peaks"){
-    if ("ref_paths" %in% names(CF)){
-      CF$features$ref$peaks <- PeakExtraction(CF$ref_paths, channels)
+  if (featMethod == "landmarks"){
+    # TO-DO:
+    # CHECK IF LANDMARKS HAVE BEEN GENERATED FOR ALL CHANNELS
+    if ("ref_data" %in% names(CF)){
+      CF$features$ref$landmarks <- LandmarkStats(CF, CF$ref_paths, channels)
+      CF$features$test$landmarks <- LandmarkStats(CF, CF$test_paths, channels)
     }
-    if ("test_paths" %in% names(CF)){
-      CF$features$test$peaks <- PeakExtraction(CF$test_paths, channels)
+    else if ("test_data" %in% names(CF)){
+      CF$features$test$landmarks <- LandmarkStats(CF, CF$test_paths, channels)
     }
-    return(CF)
   }
   
   # Everything from here on depends on aggregated data for features
@@ -57,31 +59,31 @@ FeatureGeneration <- function(CF, channels, featMethod = "summary",
   
   if (featMethod == "binning"){
     if ("ref_data" %in% names(CF)){
-      CF$features$ref$binning <- Bin(CF$ref_paths, agg, channels)
-      CF$features$test$binning <- Bin(CF$test_paths, agg, channels)
+      CF$features$ref$binning <- Bin(CF, CF$ref_paths, agg, channels)
+      CF$features$test$binning <- Bin(CF, CF$test_paths, agg, channels)
     }
     else if ("test_data" %in% names(CF)){
-      CF$features$test$binning <- Bin(CF$test_paths, agg, channels)
+      CF$features$test$binning <- Bin(CF, CF$test_paths, agg, channels)
     }
   }
   
   if (featMethod == "EMD"){
     if ("ref_data" %in% names(CF)){
-      CF$features$ref$EMD <- EMD(CF$ref_paths, agg, channels)
-      CF$features$test$EMD <- EMD(CF$test_paths, agg, channels)
+      CF$features$ref$EMD <- EMD(CF, CF$ref_paths, agg, channels)
+      CF$features$test$EMD <- EMD(CF, CF$test_paths, agg, channels)
     }
     else if ("test_data" %in% names(CF)){
-      CF$features$test$EMD <- EMD(CF$test_paths, agg, channels)
+      CF$features$test$EMD <- EMD(CF, CF$test_paths, agg, channels)
     }
   }
   
   if (featMethod == "fingerprint"){
     if ("ref_data" %in% names(CF)){
-      CF$features$ref$fingerprint <- Fingerprint(CF$ref_paths, agg, channels, nRecursions)
-      CF$features$test$fingerprint <- Fingerprint(CF$test_paths, agg, channels, nRecursions)
+      CF$features$ref$fingerprint <- Fingerprint(CF, CF$ref_paths, agg, channels, nRecursions)
+      CF$features$test$fingerprint <- Fingerprint(CF, CF$test_paths, agg, channels, nRecursions)
     }
     else if ("test_data" %in% names(CF)){
-      CF$features$test$fingerprint <- Fingerprint(CF$test_paths, agg, channels, nRecursions)
+      CF$features$test$fingerprint <- Fingerprint(CF, CF$test_paths, agg, channels, nRecursions)
     }
   }
   return(CF)
@@ -94,16 +96,45 @@ FeatureGeneration <- function(CF, channels, featMethod = "summary",
 #' @param channels Channels to calculate features for
 #'
 #' @return Dataframe with features (columns) for samples (rows)
-SummaryStats <- function(input, channels){
+SummaryStats <- function(CF, input, channels){
   all_stats <- list()
   for (path in input){
-    ff <- ReadInput(path, n = NULL)
+    ff <- ReadInput(CF, path, n = NULL)
     stats <- list()
     for (channel in channels){
       stats[paste0(channel,"_mean")] <- base::mean(ff@exprs[,channel])
       stats[paste0(channel,"_sd")] <- stats::sd(ff@exprs[,channel])
       stats[paste0(channel,"_median")] <- stats::median(ff@exprs[,channel])
       stats[paste0(channel,"_IQR")] <- stats::IQR(ff@exprs[,channel])
+    }
+    all_stats[[path]] <- stats
+  }
+  stats <- data.frame(dplyr::bind_rows(all_stats), check.names = FALSE)
+  return(stats)
+}
+
+
+#' Calculate statistics of landmarks identified using peak detection
+#'
+#' @param input List of FCS file paths
+#' @param channels Channels to calculate features for
+#'
+#' @return Dataframe with features (columns) for samples (rows)
+LandmarkStats <- function(CF, input, channels){
+  all_stats <- list()
+  for (path in input){
+    print(path)
+    ff <- ReadInput(CF, path, n = 10000)
+    stats <- list()
+    for (channel in channels){
+      agg_peaks <- CF$landmarks$ref[[channel]]$landmarks
+      for (i in nrow(agg_peaks)){
+        # Sample all the values in the expression range
+        min <- agg_peaks[i, "exprs_start"]
+        max <- agg_peaks[i, "exprs_end"]
+        peak_exprs <- ff@exprs[ff@exprs[,channel] > min & ff@exprs[,channel] < max, ]
+        stats[paste0(channel, "_peak", i, "_median")] <- stats::median(peak_exprs[,channel])
+      }
     }
     all_stats[[path]] <- stats
   }
@@ -119,10 +150,10 @@ SummaryStats <- function(input, channels){
 #' @param channels Channels to calculate features for
 #'
 #' @return Dataframe with features (columns) for samples (rows)
-EMD <- function(input, agg, channels){
+EMD <- function(CF, input, agg, channels){
   all_stats <- list()
   for (path in input){
-    ff <- ReadInput(path, n = NULL)
+    ff <- ReadInput(CF, path, n = NULL)
     stats <- list()
     for (channel in channels){
       stats[paste0(channel,'_', 'EMD')] <- transport::wasserstein1d(ff@exprs[, channel], 
@@ -143,7 +174,7 @@ EMD <- function(input, agg, channels){
 #' @param nRecursions Amount of flowFP recursions to use (default = 4)
 #'
 #' @return Dataframe with features (columns) for samples (rows)
-Fingerprint <- function(input, agg, channels, nRecursions = 4){
+Fingerprint <- function(CF, input, agg, channels, nRecursions = 4){
   # Convert aggregated matrix to flowframe
   agg <- flowCore::flowFrame(agg[,channels])
   
@@ -152,7 +183,7 @@ Fingerprint <- function(input, agg, channels, nRecursions = 4){
                                nRecursions = nRecursions)
   all_stats <- list()
   for (path in input){
-    ff <- ReadInput(path, n = NULL)
+    ff <- ReadInput(CF, path, n = NULL)
     call = flowFP::flowFP(ff[, channels], model)
     bin_counts = flowFP::counts(call)
     # Convert counts to bin frequencies
@@ -171,7 +202,7 @@ Fingerprint <- function(input, agg, channels, nRecursions = 4){
 #' @param channels Channels to calculate features for
 #'
 #' @return Dataframe with features (columns) for samples (rows)
-Bin <- function(input, agg, channels){
+Bin <- function(CF, input, agg, channels){
   # Determine the bins on the aggregated data
   message("Determining bin boundaries on aggregated data")
   bin_boundaries <- apply(agg[,channels], 2, function(x) stats::quantile(x, probs = seq(0, 1, by = 0.1)))
@@ -179,7 +210,7 @@ Bin <- function(input, agg, channels){
   
   all_stats <- list()
   for (path in input){
-    ff <- ReadInput(path, n = NULL)
+    ff <- ReadInput(CF, path, n = NULL)
     df <- data.frame(ff@exprs[,channels], check.names=FALSE)
     stats <- c()
     for (i in seq_along(channels)){

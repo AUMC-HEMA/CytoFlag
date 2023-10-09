@@ -190,7 +190,7 @@ PlotPCA <- function(CF, featMethod, includeRef = "auto", flagMethod = NULL,
 
 PlotAnomaly <- function(CF, idx, channel, n = 500, includeRef = "auto"){
   # Read the anomalous data
-  ff_anom <- ReadInput(CF$test_paths[idx], n = n)
+  ff_anom <- ReadInput(CF, CF$test_paths[idx], n = n)
   df_anom <- data.frame(ff_anom@exprs[,channels], check.names=FALSE)
   df_anom$index <- as.character(idx)
   df_anom$category <- "Outlier"
@@ -214,7 +214,7 @@ PlotAnomaly <- function(CF, idx, channel, n = 500, includeRef = "auto"){
   test_data <- list()
   for (test_idx in test_indices){
     print(test_idx)
-    ff <- ReadInput(CF$test_paths[[test_idx]], n  = n)
+    ff <- ReadInput(CF, CF$test_paths[[test_idx]], n  = n)
     df <- data.frame(ff@exprs[,channels], check.names=FALSE)
     df$index <- as.character(test_idx)
     df$category <- background_label

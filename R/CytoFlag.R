@@ -6,22 +6,30 @@
 CytoFlag <- function(){
   CF <- list(list())
   class(CF) <- "CytoFlag"
+  CF[["preprocess_function"]] <- ProcessInput
   return(CF)
+}
+
+
+ProcessInput <- function(ff){
+  ff <- PeacoQC::RemoveMargins(ff, channels)
+  ff <- flowCore::compensate(ff, ff@description$SPILL)
+  ff <- flowCore::transform(ff, flowCore::transformList(colnames(ff@description$SPILL), 
+                                                        flowCore::arcsinhTransform(a = 0, b = 1/150, c = 0)))
+  return(ff)
 }
 
 
 #' Read, preprocess and downsample FCS files
 #'
+#' @param CF CytoFlag object
 #' @param path Location of FCS file
 #' @param n Number of cells to read from FCS file
 #'
 #' @return flowFrame
-ReadInput <- function(path, n = NULL){
+ReadInput <- function(CF, path, n = NULL){
   ff <- flowCore::read.FCS(path, which.lines = n)
-  ff <- PeacoQC::RemoveMargins(ff, channels)
-  ff <- flowCore::compensate(ff, ff@description$SPILL)
-  ff <- flowCore::transform(ff, flowCore::transformList(colnames(ff@description$SPILL), 
-                                                        flowCore::arcsinhTransform(a = 0, b = 1/150, c = 0)))
+  ff <- CF[["preprocess_function"]](ff)
   return(ff)
 }
 
@@ -40,7 +48,7 @@ AddData <- function(CF, input, slot, aggSize = 10000){
   message(paste0("Reading ", n, " cells"))
   for (path in input){
     print(path)
-    ff <- ReadInput(path, n)
+    ff <- ReadInput(CF, path, n)
     CF[[slot]][[path]] <- data.frame(ff@exprs, check.names = FALSE)
   }
   return(CF)
