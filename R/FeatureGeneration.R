@@ -153,7 +153,8 @@ LandmarkStats <- function(CF, input, channels){
 EMD <- function(CF, input, agg, channels){
   all_stats <- list()
   for (path in input){
-    ff <- ReadInput(CF, path, n = NULL)
+    print(path)
+    ff <- ReadInput(CF, path, n = 1000)
     stats <- list()
     for (channel in channels){
       stats[paste0(channel,'_', 'EMD')] <- transport::wasserstein1d(ff@exprs[, channel], 
