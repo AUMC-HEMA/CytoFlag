@@ -3,13 +3,23 @@ PrepareFeaturePlot <- function(CF, featMethod, includeRef = "auto",
   testFeatures <- CF$features$test[[featMethod]]
   refFeatures <- NULL
   testAnomaly <- NULL
+  testLabels <- NULL
+  refLabels <- NULL
   featNames <- colnames(testFeatures)
+  
+  if ("test" %in% names(CF$labels)){
+    testLabels <- CF$labels$test
+  }
+  
   # Check if reference is included in object
   if (includeRef == "auto") {
     includeRef <- "ref" %in% names(CF$features)
   }
   if (includeRef){
     refFeatures <- CF$features$ref[[featMethod]]
+    if ("ref" %in% names(CF$labels)){
+      refLabels <- CF$labels$ref
+    }
   }
   
   if (!is.null(flagMethod)){
@@ -26,7 +36,9 @@ PrepareFeaturePlot <- function(CF, featMethod, includeRef = "auto",
   }
   return(list("refFeatures" = refFeatures,
               "testFeatures" = testFeatures,
-              "testAnomaly" = testAnomaly))
+              "testAnomaly" = testAnomaly,
+              "testLabels" = testLabels,
+              "refLabels" = refLabels))
 }
 
 
@@ -40,16 +52,21 @@ PrepareFeaturePlot <- function(CF, featMethod, includeRef = "auto",
 #'
 #' @return Heatmap plot
 PlotHeatmap <- function(CF, featMethod, includeRef = "auto", flagMethod = NULL, 
-                        flagSlot = "auto"){
+                        flagSlot = "auto", plotLabels = FALSE){
   features <- PrepareFeaturePlot(CF, featMethod, includeRef, flagMethod, flagSlot)
   testFeatures <- features$testFeatures
   featNames <- colnames(testFeatures)
   refFeatures <- features$refFeatures
   testAnomaly <- features$testAnomaly
+  testLabels <- features$testLabels
+  refLabels <- features$refLabels
   
   if (!is.null(refFeatures)){
     refFeatures$category <- "reference"
     testFeatures$category <- "test"
+    testFeatures$labels <- testLabels
+    refFeatures$labels <- refLabels
+    
     if (!is.null(testAnomaly)){
       testFeatures$anomaly <- testAnomaly
       refFeatures$anomaly <- FALSE
@@ -62,6 +79,7 @@ PlotHeatmap <- function(CF, featMethod, includeRef = "auto", flagMethod = NULL,
   }
   else{
     testFeatures$category <- "test"
+    testFeatures$labels <- testLabels
     if (!is.null(testAnomaly)){
       testFeatures$anomaly <- testAnomaly
     }
@@ -72,13 +90,17 @@ PlotHeatmap <- function(CF, featMethod, includeRef = "auto", flagMethod = NULL,
   }
   
   # Annotation data
-  annot_data <- features[,c("category", "anomaly")]
-  colnames(annot_data) <- c("category", "anomaly")
   annot_colors <- list(category = c("reference" = "green",
                                     "test" = "blue"),
                        anomaly = c("NA" = "grey",
                                    "TRUE" = "red",
                                    "FALSE" = "blue"))
+  cols <- c("category", "anomaly")
+  if (plotLabels){
+    cols <- c(cols, "labels")
+  }
+  annot_data <- features[, cols]
+  colnames(annot_data) <- cols
 
   # Prepare pheatmap
   mat <- as.matrix(features[,featNames])
@@ -103,16 +125,20 @@ PlotHeatmap <- function(CF, featMethod, includeRef = "auto", flagMethod = NULL,
 #' @param flagMethod Which flagging method to plot (default = NULL)
 #' @param flagSlot Whether to use outlier or novelty flags (default = "auto")
 #' @param arrows Whether to plot loadings (default = FALSE)
-#' @param labels Whether to plot labels of anomalies (default = TRUE)
+#' @param ids Whether to plot IDs of anomalies (default = TRUE)
+#' @param colors What to use for colors ("anomalies" or "labels")
 #'
 #' @return PCA plot
 PlotPCA <- function(CF, featMethod, includeRef = "auto", flagMethod = NULL, 
-                    flagSlot = "auto", arrows = FALSE, labels = TRUE){
+                    flagSlot = "auto", arrows = FALSE, ids = TRUE,
+                    color = "anomaly"){
   features <- PrepareFeaturePlot(CF, featMethod, includeRef, flagMethod, flagSlot)
   testFeatures <- features$testFeatures
   featNames <- colnames(testFeatures)
   refFeatures <- features$refFeatures
   testAnomaly <- features$testAnomaly
+  testLabels <- features$testLabels
+  refLabels <- features$refLabels
 
   if (!is.null(refFeatures)){
     # Reduce to first two principal components
@@ -124,11 +150,14 @@ PlotPCA <- function(CF, featMethod, includeRef = "auto", flagMethod = NULL,
     testFeatures$index <- rownames(testFeatures)
     refFeatures$index <- rownames(refFeatures)
     refFeatures$category <- "reference"
+    refFeatures$labels <- refLabels
+    
     if (!is.null(testAnomaly)){
       testFeatures$anomaly <- testAnomaly
       refFeatures$anomaly <- FALSE
     }
     testFeatures$category <- "test"
+    testFeatures$labels <- testLabels
     features <- rbind(testFeatures, refFeatures)
   }
   else{
@@ -137,8 +166,8 @@ PlotPCA <- function(CF, featMethod, includeRef = "auto", flagMethod = NULL,
                            flagStrat = "outlier")
     testFeatures <- PCAOutput[["testFeatures"]]
     testFeatures$index <- rownames(testFeatures)
-    refFeatures <- PCAOutput[["refFeatures"]]
     testFeatures$category <- "test"
+    testFeatures$labels <- testLabels
     if (!is.null(testAnomaly)){
       testFeatures$anomaly <- testAnomaly
     }
@@ -151,7 +180,9 @@ PlotPCA <- function(CF, featMethod, includeRef = "auto", flagMethod = NULL,
 
   # Plot
   loadScale <- 3
-  p <- ggplot2::ggplot(features, ggplot2::aes(x = PC1, y = PC2, colour = anomaly)) +
+  p <- ggplot2::ggplot(features, ggplot2::aes(x = .data[["PC1"]], 
+                                              y = .data[["PC2"]], 
+                                              colour = .data[[color]])) +
     ggplot2::xlab(paste0("PC1 (", round(PC1_var, 1), "%)")) +
     ggplot2::ylab(paste0("PC2 (", round(PC2_var, 1), "%)")) +
     ggplot2::theme(panel.background = ggplot2::element_blank(), 
@@ -161,7 +192,7 @@ PlotPCA <- function(CF, featMethod, includeRef = "auto", flagMethod = NULL,
   if (is.null(testAnomaly)){
     p <- p + ggplot2::geom_point(size = 3)
     
-    if (labels){
+    if (ids){
       p <- p + ggplot2::geom_label(data = features,
                                    ggplot2::aes(label = index), 
                                    nudge_x = 0.1, nudge_y = 0.1, 
@@ -175,7 +206,7 @@ PlotPCA <- function(CF, featMethod, includeRef = "auto", flagMethod = NULL,
   else {
     p <- p + ggplot2::geom_point(size = 3, ggplot2::aes(shape = category))
     
-    if (labels){
+    if (ids){
       p <- p + ggplot2::geom_label(data = subset(features, anomaly == TRUE),
                                    ggplot2::aes(label = index), 
                                    nudge_x = 0.1, nudge_y = 0.1, 

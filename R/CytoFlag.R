@@ -11,6 +11,24 @@ CytoFlag <- function(){
 }
 
 
+AddLabels <- function(CF, labels, slot){
+  CF[["labels"]][[slot]] <- labels
+  return(CF)
+}
+ 
+
+AddTestLabels <- function(CF, labels){
+  CF <- AddLabels(CF, labels, "test")
+  return(CF)
+}
+
+
+AddReferenceLabels <- function(CF, labels){
+  CF <- AddLabels(labels, "ref")
+  return(CF)
+}
+
+
 ProcessInput <- function(ff){
   ff <- PeacoQC::RemoveMargins(ff, channels)
   ff <- flowCore::compensate(ff, ff@description$SPILL)
@@ -28,6 +46,7 @@ ProcessInput <- function(ff){
 #'
 #' @return flowFrame
 ReadInput <- function(CF, path, n = NULL){
+  print(path)
   ff <- flowCore::read.FCS(path, which.lines = n)
   ff <- CF[["preprocess_function"]](ff)
   return(ff)
