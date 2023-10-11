@@ -154,7 +154,7 @@ EMD <- function(CF, input, agg, channels){
   all_stats <- list()
   for (path in input){
     print(path)
-    ff <- ReadInput(CF, path, n = 1000)
+    ff <- ReadInput(CF, path, n = NULL)
     stats <- list()
     for (channel in channels){
       stats[paste0(channel,'_', 'EMD')] <- transport::wasserstein1d(ff@exprs[, channel], 
