@@ -11,6 +11,11 @@
 #' @export
 FeatureGeneration <- function(CF, channels, featMethod = "summary", 
                               nRecursions = 4){
+  if (!"test_data" %in% names(CF)){
+    if (!"test_paths" %in% names(CF)){
+      message("No test data or paths found in CytoFlag object")
+  }
+  
   if (featMethod == "summary"){
     # TO-DO: CHECK IF NOT EMPTY
     # For summary statistics, use the paths directly
