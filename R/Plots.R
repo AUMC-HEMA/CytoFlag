@@ -40,7 +40,7 @@ PrepareFeaturePlot <- function(CF, featMethod, includeRef = "auto",
 #'
 #' @return Heatmap plot
 PlotHeatmap <- function(CF, featMethod, includeRef = "auto", flagMethod = NULL, 
-                    flagSlot = "auto"){
+                        flagSlot = "auto"){
   features <- PrepareFeaturePlot(CF, featMethod, includeRef, flagMethod, flagSlot)
   testFeatures <- features$testFeatures
   featNames <- colnames(testFeatures)
@@ -151,13 +151,13 @@ PlotPCA <- function(CF, featMethod, includeRef = "auto", flagMethod = NULL,
 
   # Plot
   loadScale <- 3
-  p <- ggplot2::ggplot(features, ggplot2::aes(x = PC1, y = PC2, colour = category)) +
+  p <- ggplot2::ggplot(features, ggplot2::aes(x = PC1, y = PC2, colour = anomaly)) +
     ggplot2::xlab(paste0("PC1 (", round(PC1_var, 1), "%)")) +
     ggplot2::ylab(paste0("PC2 (", round(PC2_var, 1), "%)")) +
     ggplot2::theme(panel.background = ggplot2::element_blank(), 
-          plot.background = ggplot2::element_blank(), 
-          panel.border = ggplot2::element_rect(colour = "black", fill = NA, 
-                                      linewidth = 0.5))
+                   plot.background = ggplot2::element_blank(), 
+                   panel.border = ggplot2::element_rect(colour = "black", fill = NA, 
+                                                        linewidth = 0.5))
   if (is.null(testAnomaly)){
     p <- p + ggplot2::geom_point(size = 3)
     
@@ -173,7 +173,7 @@ PlotPCA <- function(CF, featMethod, includeRef = "auto", flagMethod = NULL,
     }
   }
   else {
-    p <- p + ggplot2::geom_point(size = 3, ggplot2::aes(shape = anomaly))
+    p <- p + ggplot2::geom_point(size = 3, ggplot2::aes(shape = category))
     
     if (labels){
       p <- p + ggplot2::geom_label(data = subset(features, anomaly == TRUE),
