@@ -74,11 +74,11 @@ FeatureGeneration <- function(CF, channels, featMethod = "summary",
   
   if (featMethod == "binning"){
     if ("ref_data" %in% names(CF)){
-      CF$features$ref$binning <- Bin(CF, CF$ref_paths, agg, channels)
-      CF$features$test$binning <- Bin(CF, CF$test_paths, agg, channels)
+      CF$features$ref$binning <- Bin(CF, CF$ref_paths, agg, channels, cores)
+      CF$features$test$binning <- Bin(CF, CF$test_paths, agg, channels, cores)
     }
     else if ("test_data" %in% names(CF)){
-      CF$features$test$binning <- Bin(CF, CF$test_paths, agg, channels)
+      CF$features$test$binning <- Bin(CF, CF$test_paths, agg, channels, cores)
     }
   }
   
@@ -280,28 +280,51 @@ Fingerprint <- function(CF, input, agg, channels, cores, nRecursions = 4){
 }
 
 
-Bin <- function(CF, input, agg, channels){
+calculateBins <- function(CF, path, bin_boundaries, channels, n = 1000){
+  ff <- ReadInput(CF, path, n = n)
+  df <- data.frame(ff@exprs[,channels], check.names=FALSE)
+  stats <- c()
+  for (i in seq_along(channels)){
+    # Calculate the frequencies per bin
+    counts <- as.numeric(t(data.frame(table(cut(df[, channels[i]], 
+                                                breaks = bin_boundaries[, i]))))[2,])
+    freqs <- counts / sum(counts)
+    names(freqs) <- paste(channels[i], "_bin", 1:10, sep = "")
+    stats <- c(stats, freqs)
+  }
+  stats <- list(stats)
+  return(stats)
+}
+
+
+Bin <- function(CF, input, agg, channels, cores){
   # Determine the bins on the aggregated data
   message("Determining bin boundaries on aggregated data")
   bin_boundaries <- apply(agg[,channels], 2, 
                           function(x) stats::quantile(x, probs = seq(0, 1, by = 0.1)))
   bin_boundaries <- data.frame(bin_boundaries)
-  
-  all_stats <- list()
-  for (path in input){
-    ff <- ReadInput(CF, path, n = NULL)
-    df <- data.frame(ff@exprs[,channels], check.names=FALSE)
-    stats <- c()
-    for (i in seq_along(channels)){
-      # Calculate the frequencies per bin
-      counts <- as.numeric(t(data.frame(table(cut(df[, channels[i]], breaks = bin_boundaries[, i]))))[2,])
-      freqs <- counts / sum(counts)
-      names(freqs) <- paste(channels[i], "_bin", 1:10, sep = "")
-      stats <- c(stats, freqs)
+  if (cores > 1){
+    cl <- parallel::makeCluster(cores)
+    doParallel::registerDoParallel(cl)
+    parallel::clusterExport(cl, c("channels", "CF", "bin_boundaries", "ReadInput", 
+                                  "calculateBins"),
+                            envir=environment())
+    all_stats <- foreach::foreach(path = input, .combine = "c", 
+                                  .packages=c("flowCore","PeacoQC")) %dopar% {
+                                    stats <- calculateBins(CF, path, bin_boundaries, channels)
+                                    names(stats) <- path
+                                    return(stats)
+                                  }
+    parallel::stopCluster(cl)
+  }
+  else {
+    all_stats <- list()
+    for (path in input){
+      all_stats[[path]] <- calculateBins(CF, path, bin_boundaries, channels)
     }
-    all_stats[[path]] <- stats
   }
   stats <- data.frame(dplyr::bind_rows(all_stats), check.names = FALSE)
+  rownames(stats) <- names(all_stats)
   return(stats)
 }
 
