@@ -94,11 +94,14 @@ FeatureGeneration <- function(CF, channels, featMethod = "summary",
   
   if (featMethod == "fingerprint"){
     if ("ref_data" %in% names(CF)){
-      CF$features$ref$fingerprint <- Fingerprint(CF, CF$ref_paths, agg, channels, nRecursions)
-      CF$features$test$fingerprint <- Fingerprint(CF, CF$test_paths, agg, channels, nRecursions)
+      CF$features$ref$fingerprint <- Fingerprint(CF, CF$ref_paths, agg, channels, 
+                                                 cores, nRecursions)
+      CF$features$test$fingerprint <- Fingerprint(CF, CF$test_paths, agg, channels, 
+                                                  cores, nRecursions)
     }
     else if ("test_data" %in% names(CF)){
-      CF$features$test$fingerprint <- Fingerprint(CF, CF$test_paths, agg, channels, nRecursions)
+      CF$features$test$fingerprint <- Fingerprint(CF, CF$test_paths, agg, channels, 
+                                                  cores, nRecursions)
     }
   }
   return(CF)
@@ -235,46 +238,53 @@ EMD <- function(CF, input, agg, channels, cores){
 }
 
 
-#' Calculate flowFP bin counts for samples based on aggregated data
-#'
-#' @param input List of FCS file paths
-#' @param agg Dataframe of aggregated data
-#' @param channels Channels to calculate features for
-#' @param nRecursions Amount of flowFP recursions to use (default = 4)
-#'
-#' @return Dataframe with features (columns) for samples (rows)
-Fingerprint <- function(CF, input, agg, channels, nRecursions = 4){
-  # Convert aggregated matrix to flowframe
-  agg <- flowCore::flowFrame(agg[,channels])
-  
-  message("Fitting flowFP fingerprinting model")
-  model <- flowFP::flowFPModel(agg, parameters = channels, 
-                               nRecursions = nRecursions)
-  all_stats <- list()
-  for (path in input){
-    ff <- ReadInput(CF, path, n = NULL)
-    call = flowFP::flowFP(ff[, channels], model)
-    bin_counts = flowFP::counts(call)
-    # Convert counts to bin frequencies
-    stats = data.frame(t(apply(bin_counts, 1, function(x) x/sum(x))))
-    all_stats[[path]] <- stats
-  }
-  stats <- data.frame(dplyr::bind_rows(all_stats), check.names = FALSE)
+calculateFingerprint <- function(CF, path, model, channels, n = 1000){
+  ff <- ReadInput(CF, path, n = n)
+  call = flowFP::flowFP(ff[, channels], model)
+  bin_counts = flowFP::counts(call)
+  # Convert counts to bin frequencies
+  stats = data.frame(t(apply(bin_counts, 1, function(x) x/sum(x))))
+  stats = list(stats)
   return(stats)
 }
 
 
-#' Calculate flowFP bin counts for samples based on aggregated data
-#'
-#' @param input List of FCS file paths
-#' @param agg Dataframe of aggregated data
-#' @param channels Channels to calculate features for
-#'
-#' @return Dataframe with features (columns) for samples (rows)
+Fingerprint <- function(CF, input, agg, channels, cores, nRecursions = 4){
+  # Convert aggregated matrix to flowframe
+  agg <- flowCore::flowFrame(agg[,channels])
+  message("Fitting flowFP fingerprinting model")
+  model <- flowFP::flowFPModel(agg, parameters = channels, 
+                               nRecursions = nRecursions)
+  if (cores > 1){
+    cl <- parallel::makeCluster(cores)
+    doParallel::registerDoParallel(cl)
+    parallel::clusterExport(cl, c("channels", "CF", "model", "ReadInput", 
+                                  "calculateFingerprint"),
+                            envir=environment())
+    all_stats <- foreach::foreach(path = input, .combine = "c", 
+                                  .packages=c("flowCore","PeacoQC", "flowFP")) %dopar% {
+                                  stats <- calculateFingerprint(CF, path, model, channels)
+                                  names(stats) <- path
+                                  return(stats)
+                                  }
+    parallel::stopCluster(cl)
+  } else {
+    all_stats <- list()
+    for (path in input){
+      all_stats[[path]] <- calculateFingerprint(CF, path, model, channels)
+    }
+  }
+  stats <- data.frame(dplyr::bind_rows(all_stats), check.names = FALSE)
+  rownames(stats) <- names(all_stats)
+  return(stats)
+}
+
+
 Bin <- function(CF, input, agg, channels){
   # Determine the bins on the aggregated data
   message("Determining bin boundaries on aggregated data")
-  bin_boundaries <- apply(agg[,channels], 2, function(x) stats::quantile(x, probs = seq(0, 1, by = 0.1)))
+  bin_boundaries <- apply(agg[,channels], 2, 
+                          function(x) stats::quantile(x, probs = seq(0, 1, by = 0.1)))
   bin_boundaries <- data.frame(bin_boundaries)
   
   all_stats <- list()
