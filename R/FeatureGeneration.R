@@ -39,11 +39,14 @@ FeatureGeneration <- function(CF, channels, featMethod = "summary",
     # TO-DO:
     # CHECK IF LANDMARKS HAVE BEEN GENERATED FOR ALL CHANNELS
     if ("ref_data" %in% names(CF)){
-      CF$features$ref$landmarks <- LandmarkStats(CF, CF$ref_paths, channels)
-      CF$features$test$landmarks <- LandmarkStats(CF, CF$test_paths, channels)
+      CF$features$ref$landmarks <- LandmarkStats(CF, CF$ref_paths, channels,
+                                                 cores)
+      CF$features$test$landmarks <- LandmarkStats(CF, CF$test_paths, channels,
+                                                  cores)
     }
     else if ("test_data" %in% names(CF)){
-      CF$features$test$landmarks <- LandmarkStats(CF, CF$test_paths, channels)
+      CF$features$test$landmarks <- LandmarkStats(CF, CF$test_paths, channels,
+                                                  cores)
     }
   }
   
@@ -141,42 +144,55 @@ SummaryStats <- function(CF, input, channels, cores){
 }
 
 
-#' Calculate statistics of landmarks identified using peak detection
-#'
-#' @param input List of FCS file paths
-#' @param channels Channels to calculate features for
-#'
-#' @return Dataframe with features (columns) for samples (rows)
-LandmarkStats <- function(CF, input, channels){
-  all_stats <- list()
-  for (path in input){
-    ff <- ReadInput(CF, path, n = 1000)
-    df <- data.frame(ff@exprs[,channels], check.names = FALSE)
-    stats <- list()
-    for (channel in channels){
-      agg_peaks <- CF$landmarks$ref[[channel]]$landmarks
-      for (i in seq(1, nrow(agg_peaks))){
-        # Sample all the values in the expression range
-        min <- agg_peaks[i, "exprs_start"]
-        max <- agg_peaks[i, "exprs_end"]
-        peak_exprs <- df[df[,channel] > min & df[,channel] < max, ]
-        if (is.null(peak_exprs)){
-          print("too little cells")
-          stats[paste0(channel, "_peak", i, "_median")] <- NA
-        }
-        else if (nrow(peak_exprs) < 20){
-          stats[paste0(channel, "_peak", i, "_median")] <- NA
-        }
-        else {
-          stats[paste0(channel, "_peak", i, "_median")] <- stats::median(peak_exprs[,channel])
-        }
+calculateLandmarks <- function(CF, path, channels, n = 1000){
+  ff <- ReadInput(CF, path, n = n)
+  df <- data.frame(ff@exprs[,channels], check.names = FALSE)
+  stats <- list()
+  for (channel in channels){
+    agg_peaks <- CF$landmarks$ref[[channel]]$landmarks
+    for (i in seq(1, nrow(agg_peaks))){
+      # Sample all the values in the expression range
+      min <- agg_peaks[i, "exprs_start"]
+      max <- agg_peaks[i, "exprs_end"]
+      peak_exprs <- df[df[,channel] > min & df[,channel] < max, ]
+      if (is.null(peak_exprs)){
+        print("too little cells")
+        stats[paste0(channel, "_peak", i, "_median")] <- NA
+      }
+      else if (nrow(peak_exprs) < 20){
+        stats[paste0(channel, "_peak", i, "_median")] <- NA
+      }
+      else {
+        stats[paste0(channel, "_peak", i, "_median")] <- stats::median(peak_exprs[,channel])
       }
     }
-    all_stats[[path]] <- stats
+  }
+  return(stats)
+}
+
+
+LandmarkStats <- function(CF, input, channels, cores){
+  if (cores > 1){
+    cl <- parallel::makeCluster(cores)
+    doParallel::registerDoParallel(cl)
+    parallel::clusterExport(cl, c("channels", "CF", "ReadInput", "calculateLandmarks"))
+    all_stats <- foreach::foreach(path = input, .combine = "c", 
+                                  .packages=c("flowCore","PeacoQC")) %dopar% {
+                                  stats <- list(calculateLandmarks(CF, path, channels))
+                                  names(stats) <- path
+                                  return(stats)
+                                  }
+    parallel::stopCluster(cl)
+  } else {
+    all_stats <- list()
+    for (path in input){
+      all_stats[[path]] <- calculateLandmarks(CF, path, channels)
+    }
   }
   stats <- data.frame(dplyr::bind_rows(all_stats), check.names = FALSE)
   # Impute missing values
   stats <- VIM::kNN(stats, k = 1, imp_var	= FALSE)
+  rownames(stats) <- names(all_stats)
   return(stats)
 }
 
