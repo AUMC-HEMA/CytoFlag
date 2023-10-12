@@ -10,20 +10,27 @@
 #' 
 #' @export
 FeatureGeneration <- function(CF, channels, featMethod = "summary", 
-                              nRecursions = 4){
+                              nRecursions = 4, cores = "auto"){
+  # Determine the number of cores to use
+  if (cores == "auto"){
+      cores = detectCores() / 2 
+      message(paste("Using 50% of cores:", cores))
+  }
+  
   if (!"test_data" %in% names(CF)){
     if (!"test_paths" %in% names(CF)){
       message("No test data or paths found in CytoFlag object")
+    }
   }
   
   if (featMethod == "summary"){
     # TO-DO: CHECK IF NOT EMPTY
     # For summary statistics, use the paths directly
     if ("ref_paths" %in% names(CF)){
-      CF$features$ref$summary <- SummaryStats(CF, CF$ref_paths, channels)
+      CF$features$ref$summary <- SummaryStats(CF, CF$ref_paths, channels, cores)
     }
     if ("test_paths" %in% names(CF)){
-      CF$features$test$summary <- SummaryStats(CF, CF$test_paths, channels)
+      CF$features$test$summary <- SummaryStats(CF, CF$test_paths, channels, cores)
     }
     return(CF)
   }
@@ -95,26 +102,41 @@ FeatureGeneration <- function(CF, channels, featMethod = "summary",
 }
 
 
-#' Calculate summary statistics (mean, SD, median, IQR)
-#'
-#' @param input List of FCS file paths
-#' @param channels Channels to calculate features for
-#'
-#' @return Dataframe with features (columns) for samples (rows)
-SummaryStats <- function(CF, input, channels){
-  all_stats <- list()
-  for (path in input){
-    ff <- ReadInput(CF, path, n = NULL)
-    stats <- list()
-    for (channel in channels){
-      stats[paste0(channel,"_mean")] <- base::mean(ff@exprs[,channel])
-      stats[paste0(channel,"_sd")] <- stats::sd(ff@exprs[,channel])
-      stats[paste0(channel,"_median")] <- stats::median(ff@exprs[,channel])
-      stats[paste0(channel,"_IQR")] <- stats::IQR(ff@exprs[,channel])
+calculateSummary <- function(CF, path, channels, n = 2000){
+  ff <- ReadInput(CF, path, n = n)
+  stats <- list()
+  for (channel in channels){
+    stats[paste0(channel,"_mean")] <- base::mean(ff@exprs[,channel])
+    stats[paste0(channel,"_sd")] <- stats::sd(ff@exprs[,channel])
+    stats[paste0(channel,"_median")] <- stats::median(ff@exprs[,channel])
+    stats[paste0(channel,"_IQR")] <- stats::IQR(ff@exprs[,channel])
+  }
+  return(stats)
+}
+
+
+SummaryStats <- function(CF, input, channels, cores){
+  if (cores > 1){
+    cl <- parallel::makeCluster(cores)
+    doParallel::registerDoParallel(cl)
+    parallel::clusterExport(cl, c("channels", "CF", "ReadInput", "calculateSummary"))
+    all_stats <- foreach::foreach(path = input, .combine = "c", 
+                           .packages=c("flowCore","PeacoQC")) %dopar% {
+                           stats <- list(calculateSummary(CF, path, channels))
+                           names(stats) <- path
+                           return(stats)
+                         }
+    parallel::stopCluster(cl)
+  }
+  else {
+    all_stats <- list()
+    for (path in input){
+      stats <- calculateSummary(CF, path, channels)
+      all_stats[[path]] <- stats
     }
-    all_stats[[path]] <- stats
   }
   stats <- data.frame(dplyr::bind_rows(all_stats), check.names = FALSE)
+  rownames(stats) <- names(all_stats)
   return(stats)
 }
 
@@ -128,22 +150,33 @@ SummaryStats <- function(CF, input, channels){
 LandmarkStats <- function(CF, input, channels){
   all_stats <- list()
   for (path in input){
-    print(path)
-    ff <- ReadInput(CF, path, n = 10000)
+    ff <- ReadInput(CF, path, n = 1000)
+    df <- data.frame(ff@exprs[,channels], check.names = FALSE)
     stats <- list()
     for (channel in channels){
       agg_peaks <- CF$landmarks$ref[[channel]]$landmarks
-      for (i in nrow(agg_peaks)){
+      for (i in seq(1, nrow(agg_peaks))){
         # Sample all the values in the expression range
         min <- agg_peaks[i, "exprs_start"]
         max <- agg_peaks[i, "exprs_end"]
-        peak_exprs <- ff@exprs[ff@exprs[,channel] > min & ff@exprs[,channel] < max, ]
-        stats[paste0(channel, "_peak", i, "_median")] <- stats::median(peak_exprs[,channel])
+        peak_exprs <- df[df[,channel] > min & df[,channel] < max, ]
+        if (is.null(peak_exprs)){
+          print("too little cells")
+          stats[paste0(channel, "_peak", i, "_median")] <- NA
+        }
+        else if (nrow(peak_exprs) < 20){
+          stats[paste0(channel, "_peak", i, "_median")] <- NA
+        }
+        else {
+          stats[paste0(channel, "_peak", i, "_median")] <- stats::median(peak_exprs[,channel])
+        }
       }
     }
     all_stats[[path]] <- stats
   }
   stats <- data.frame(dplyr::bind_rows(all_stats), check.names = FALSE)
+  # Impute missing values
+  stats <- VIM::kNN(stats, k = 1, imp_var	= FALSE)
   return(stats)
 }
 
