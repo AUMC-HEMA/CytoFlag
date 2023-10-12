@@ -47,6 +47,7 @@ ProcessInput <- function(ff){
 #' @return flowFrame
 ReadInput <- function(CF, path, n = NULL){
   print(path)
+  set.seed(42)
   ff <- flowCore::read.FCS(path, which.lines = n)
   ff <- CF[["preprocess_function"]](ff)
   return(ff)
