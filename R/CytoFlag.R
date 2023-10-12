@@ -7,6 +7,8 @@ CytoFlag <- function(){
   CF <- list(list())
   class(CF) <- "CytoFlag"
   CF[["preprocess_function"]] <- ProcessInput
+  CF[["parallel_vars"]] <- c("channels", "CF", "ReadInput")
+  CF[["parallel_packages"]] <- c("flowCore", "PeacoQC")
   return(CF)
 }
 
@@ -46,7 +48,6 @@ ProcessInput <- function(ff){
 #'
 #' @return flowFrame
 ReadInput <- function(CF, path, n = NULL){
-  print(path)
   set.seed(42)
   ff <- flowCore::read.FCS(path, which.lines = n)
   ff <- CF[["preprocess_function"]](ff)
@@ -65,9 +66,7 @@ ReadInput <- function(CF, path, n = NULL){
 AddData <- function(CF, input, slot, aggSize = 10000){
   # Determine how many cells (n) to read per file
   n = round(aggSize / length(input))
-  message(paste0("Reading ", n, " cells"))
   for (path in input){
-    print(path)
     ff <- ReadInput(CF, path, n)
     CF[[slot]][[path]] <- data.frame(ff@exprs, check.names = FALSE)
   }

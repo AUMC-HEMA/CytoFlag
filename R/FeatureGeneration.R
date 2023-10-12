@@ -125,9 +125,9 @@ SummaryStats <- function(CF, input, channels, cores){
   if (cores > 1){
     cl <- parallel::makeCluster(cores)
     doParallel::registerDoParallel(cl)
-    parallel::clusterExport(cl, c("channels", "CF", "ReadInput", "calculateSummary"))
+    parallel::clusterExport(cl, c(CF[["parallel_vars"]], "calculateSummary"))
     all_stats <- foreach::foreach(path = input, .combine = "c", 
-                           .packages=c("flowCore","PeacoQC")) %dopar% {
+                           .packages = CF[["parallel_packages"]]) %dopar% {
                            stats <- list(calculateSummary(CF, path, channels))
                            names(stats) <- path
                            return(stats)
@@ -178,9 +178,9 @@ LandmarkStats <- function(CF, input, channels, cores){
   if (cores > 1){
     cl <- parallel::makeCluster(cores)
     doParallel::registerDoParallel(cl)
-    parallel::clusterExport(cl, c("channels", "CF", "ReadInput", "calculateLandmarks"))
+    parallel::clusterExport(cl, c(CF[["parallel_vars"]], "calculateLandmarks"))
     all_stats <- foreach::foreach(path = input, .combine = "c", 
-                                  .packages=c("flowCore","PeacoQC")) %dopar% {
+                                  .packages = CF[["parallel_packages"]]) %dopar% {
                                   stats <- list(calculateLandmarks(CF, path, channels))
                                   names(stats) <- path
                                   return(stats)
@@ -216,10 +216,10 @@ EMD <- function(CF, input, agg, channels, cores){
   if (cores > 1){
     cl <- parallel::makeCluster(cores)
     doParallel::registerDoParallel(cl)
-    parallel::clusterExport(cl, c("channels", "CF", "agg", "ReadInput", "calculateEMD"),
+    parallel::clusterExport(cl, c(CF[["parallel_vars"]], "agg", "calculateEMD"),
                             envir=environment())
     all_stats <- foreach::foreach(path = input, .combine = "c", 
-                                  .packages=c("flowCore","PeacoQC", "transport")) %dopar% {
+                                  .packages = c(CF[["parallel_packages"]], "transport")) %dopar% {
                                     stats <- list(calculateEMD(CF, path, agg, channels))
                                     names(stats) <- path
                                     return(stats)
@@ -258,11 +258,10 @@ Fingerprint <- function(CF, input, agg, channels, cores, nRecursions = 4){
   if (cores > 1){
     cl <- parallel::makeCluster(cores)
     doParallel::registerDoParallel(cl)
-    parallel::clusterExport(cl, c("channels", "CF", "model", "ReadInput", 
-                                  "calculateFingerprint"),
-                            envir=environment())
+    parallel::clusterExport(cl, c(CF[["parallel_vars"]], "model", 
+                                  "calculateFingerprint"), envir=environment())
     all_stats <- foreach::foreach(path = input, .combine = "c", 
-                                  .packages=c("flowCore","PeacoQC", "flowFP")) %dopar% {
+                                  .packages = c(CF[["parallel_packages"]], "flowFP")) %dopar% {
                                   stats <- calculateFingerprint(CF, path, model, channels)
                                   names(stats) <- path
                                   return(stats)
@@ -306,11 +305,10 @@ Bin <- function(CF, input, agg, channels, cores){
   if (cores > 1){
     cl <- parallel::makeCluster(cores)
     doParallel::registerDoParallel(cl)
-    parallel::clusterExport(cl, c("channels", "CF", "bin_boundaries", "ReadInput", 
-                                  "calculateBins"),
-                            envir=environment())
+    parallel::clusterExport(cl, c(CF[["parallel_vars"]], "bin_boundaries", 
+                                  "calculateBins"), envir=environment())
     all_stats <- foreach::foreach(path = input, .combine = "c", 
-                                  .packages=c("flowCore","PeacoQC")) %dopar% {
+                                  .packages = CF[["parallel_packages"]]) %dopar% {
                                     stats <- calculateBins(CF, path, bin_boundaries, channels)
                                     names(stats) <- path
                                     return(stats)
