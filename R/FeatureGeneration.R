@@ -84,11 +84,11 @@ FeatureGeneration <- function(CF, channels, featMethod = "summary",
   
   if (featMethod == "EMD"){
     if ("ref_data" %in% names(CF)){
-      CF$features$ref$EMD <- EMD(CF, CF$ref_paths, agg, channels)
-      CF$features$test$EMD <- EMD(CF, CF$test_paths, agg, channels)
+      CF$features$ref$EMD <- EMD(CF, CF$ref_paths, agg, channels, cores)
+      CF$features$test$EMD <- EMD(CF, CF$test_paths, agg, channels, cores)
     }
     else if ("test_data" %in% names(CF)){
-      CF$features$test$EMD <- EMD(CF, CF$test_paths, agg, channels)
+      CF$features$test$EMD <- EMD(CF, CF$test_paths, agg, channels, cores)
     }
   }
   
@@ -105,7 +105,7 @@ FeatureGeneration <- function(CF, channels, featMethod = "summary",
 }
 
 
-calculateSummary <- function(CF, path, channels, n = 2000){
+calculateSummary <- function(CF, path, channels, n = 1000){
   ff <- ReadInput(CF, path, n = n)
   stats <- list()
   for (channel in channels){
@@ -197,26 +197,40 @@ LandmarkStats <- function(CF, input, channels, cores){
 }
 
 
-#' Calculate earth mover's distance (EMD) between samples and aggregated dataset
-#'
-#' @param input List of FCS file paths
-#' @param agg Dataframe of aggregated data
-#' @param channels Channels to calculate features for
-#'
-#' @return Dataframe with features (columns) for samples (rows)
-EMD <- function(CF, input, agg, channels){
-  all_stats <- list()
-  for (path in input){
-    print(path)
-    ff <- ReadInput(CF, path, n = NULL)
-    stats <- list()
-    for (channel in channels){
-      stats[paste0(channel,'_', 'EMD')] <- transport::wasserstein1d(ff@exprs[, channel], 
-                                                                    agg[, channel])
+calculateEMD <- function(CF, path, agg, channels, n = 1000){
+  ff <- ReadInput(CF, path, n = n)
+  stats <- list()
+  for (channel in channels){
+    stats[paste0(channel,'_', 'EMD')] <- transport::wasserstein1d(ff@exprs[, channel], 
+                                                                  agg[, channel])
+  }
+  return(stats)
+}
+
+
+EMD <- function(CF, input, agg, channels, cores){
+  agg <- agg
+  if (cores > 1){
+    cl <- parallel::makeCluster(cores)
+    doParallel::registerDoParallel(cl)
+    parallel::clusterExport(cl, c("channels", "CF", "agg", "ReadInput", "calculateEMD"),
+                            envir=environment())
+    all_stats <- foreach::foreach(path = input, .combine = "c", 
+                                  .packages=c("flowCore","PeacoQC", "transport")) %dopar% {
+                                    stats <- list(calculateEMD(CF, path, agg, channels))
+                                    names(stats) <- path
+                                    return(stats)
+                                  }
+    parallel::stopCluster(cl)
+  }
+  else {
+    all_stats <- list()
+    for (path in input){
+      all_stats[[path]] <- calculateEMD(CF, path, agg, channels)
     }
-    all_stats[[path]] <- stats
   }
   stats <- data.frame(dplyr::bind_rows(all_stats), check.names = FALSE)
+  rownames(stats) <- names(all_stats)
   return(stats)
 }
 
