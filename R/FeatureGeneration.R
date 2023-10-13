@@ -126,6 +126,7 @@ SummaryStats <- function(CF, input, channels, cores){
     cl <- parallel::makeCluster(cores)
     doParallel::registerDoParallel(cl)
     parallel::clusterExport(cl, c(CF[["parallel_vars"]], "calculateSummary"))
+    `%dopar%` <- foreach::`%dopar%`
     all_stats <- foreach::foreach(path = input, .combine = "c", 
                            .packages = CF[["parallel_packages"]]) %dopar% {
                            stats <- list(calculateSummary(CF, path, channels))
@@ -179,6 +180,7 @@ LandmarkStats <- function(CF, input, channels, cores){
     cl <- parallel::makeCluster(cores)
     doParallel::registerDoParallel(cl)
     parallel::clusterExport(cl, c(CF[["parallel_vars"]], "calculateLandmarks"))
+    `%dopar%` <- foreach::`%dopar%`
     all_stats <- foreach::foreach(path = input, .combine = "c", 
                                   .packages = CF[["parallel_packages"]]) %dopar% {
                                   stats <- list(calculateLandmarks(CF, path, channels))
@@ -218,6 +220,7 @@ EMD <- function(CF, input, agg, channels, cores){
     doParallel::registerDoParallel(cl)
     parallel::clusterExport(cl, c(CF[["parallel_vars"]], "agg", "calculateEMD"),
                             envir=environment())
+    `%dopar%` <- foreach::`%dopar%`
     all_stats <- foreach::foreach(path = input, .combine = "c", 
                                   .packages = c(CF[["parallel_packages"]], "transport")) %dopar% {
                                     stats <- list(calculateEMD(CF, path, agg, channels))
@@ -260,6 +263,7 @@ Fingerprint <- function(CF, input, agg, channels, cores, nRecursions = 4){
     doParallel::registerDoParallel(cl)
     parallel::clusterExport(cl, c(CF[["parallel_vars"]], "model", 
                                   "calculateFingerprint"), envir=environment())
+    `%dopar%` <- foreach::`%dopar%`
     all_stats <- foreach::foreach(path = input, .combine = "c", 
                                   .packages = c(CF[["parallel_packages"]], "flowFP")) %dopar% {
                                   stats <- calculateFingerprint(CF, path, model, channels)
@@ -307,6 +311,7 @@ Bin <- function(CF, input, agg, channels, cores){
     doParallel::registerDoParallel(cl)
     parallel::clusterExport(cl, c(CF[["parallel_vars"]], "bin_boundaries", 
                                   "calculateBins"), envir=environment())
+    `%dopar%` <- foreach::`%dopar%`
     all_stats <- foreach::foreach(path = input, .combine = "c", 
                                   .packages = CF[["parallel_packages"]]) %dopar% {
                                     stats <- calculateBins(CF, path, bin_boundaries, channels)
