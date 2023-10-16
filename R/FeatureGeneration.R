@@ -2,14 +2,15 @@
 #'
 #' @param CF CytoFlag object
 #' @param channels Channels to calculate features for
-#' @param featMethod Feature generation method to use.
+#' @param featMethod Feature generation method to use
+#' @param aggSlot Whether to use reference or test data as aggregate (default = "auto")
 #' @param nRecursions Number of recursions to use for fingerprinting (default = 4)
 #'
 #' @return Dataframe with features (columns) for samples (rows)
 #' 
 #' @export
 FeatureGeneration <- function(CF, channels, featMethod = "summary", 
-                              nRecursions = 4, cores = "auto"){
+                              aggSlot = "auto", cores = "auto", nRecursions = 4){
   # Determine the number of cores to use
   if (cores == "auto"){
       cores = detectCores() / 2 
@@ -29,7 +30,6 @@ FeatureGeneration <- function(CF, channels, featMethod = "summary",
       if (paste0(slot, "_paths") %in% names(CF)){
         if (!featMethod %in% names(CF$features[[slot]])){
           # Generate features for all paths
-          print("gen")
           CF$features[[slot]][[featMethod]] <- func(CF, CF[[paste0(slot, "_paths")]],
                                                     channels, cores)
         }
@@ -56,26 +56,25 @@ FeatureGeneration <- function(CF, channels, featMethod = "summary",
     return(CF)
   }
   
-  # Everything from here on depends on aggregated data for features
-  if ("ref_data" %in% names(CF)){
-    message("Using aggregated reference data to calculate features")
-    agg <- as.matrix((dplyr::bind_rows(CF$ref_data)))
+  # Everything from here on depends on aggregated data
+  if (aggSlot == "auto"){
+    if ("ref_data" %in% names(CF)){
+      agg <- as.matrix((dplyr::bind_rows(CF$ref_data)))
+    }
+    else if ("ref_paths" %in% names(CF)){
+      CF <- AddReferenceData(CF, CF$ref_paths, read = TRUE)
+      agg <- as.matrix((dplyr::bind_rows(CF$ref_data)))
+    }
+    else if ("test_data" %in% names(CF)){
+      agg <- as.matrix((dplyr::bind_rows(CF$test_data)))
+    }
+    else if ("test_paths" %in% names(CF)){
+      CF <- AddTestData(CF, CF$test_paths, read = TRUE)
+      agg <- as.matrix((dplyr::bind_rows(CF$test_data)))
+    }
   }
-  else if ("ref_paths" %in% names(CF)){
-    message("Aggregating reference data to calculate features")
-    CF <- AddReferenceData(CF, CF$ref_paths, read = TRUE)
-    message("Using aggregated reference data to calculate features")
-    agg <- as.matrix((dplyr::bind_rows(CF$ref_data)))
-  }
-  else if ("test_data" %in% names(CF)){
-    message("Using aggregated test data to calculate features")
-    agg <- as.matrix((dplyr::bind_rows(CF$test_data)))
-  }
-  else if ("test_paths" %in% names(CF)){
-    message("Aggregating test data to calculate features")
-    CF <- AddTestData(CF, CF$test_paths, read = TRUE)
-    message("Using aggregated test data to calculate features")
-    agg <- as.matrix((dplyr::bind_rows(CF$test_data)))
+  else {
+    agg <- as.matrix((dplyr::bind_rows(CF[[paste0(aggSlot, "_data")]])))
   }
   
   if (featMethod == "binning"){
