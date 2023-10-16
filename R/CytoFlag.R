@@ -44,7 +44,7 @@ ProcessInput <- function(ff){
 #'
 #' @param CF CytoFlag object
 #' @param path Location of FCS file
-#' @param n Number of cells to read from FCS file
+#' @param n Total number of cells to read per file
 #'
 #' @return flowFrame
 ReadInput <- function(CF, path, n = NULL){
@@ -60,12 +60,10 @@ ReadInput <- function(CF, path, n = NULL){
 #' @param CF CytoFlag object
 #' @param input List of FCS file paths
 #' @param slot Slot in the CytoFlag object to store data
-#' @param aggSize Total number of cells to read (default = 10000)
+#' @param n Total number of cells to read per file (default = 1000)
 #'
 #' @return CytoFlag object
-AddData <- function(CF, input, slot, aggSize = 10000){
-  # Determine how many cells (n) to read per file
-  n = round(aggSize / length(input))
+AddData <- function(CF, input, slot, n = 1000){
   for (path in input){
     ff <- ReadInput(CF, path, n)
     CF[[slot]][[path]] <- data.frame(ff@exprs, check.names = FALSE)
@@ -79,12 +77,12 @@ AddData <- function(CF, input, slot, aggSize = 10000){
 #' @param CF CytoFlag object
 #' @param input List of FCS file paths
 #' @param read Whether to read FCS files already (default = FALSE)
-#' @param aggSize Total number of cells to read
+#' @param n Total number of cells to read per file (default = 1000)
 #'
 #' @return CytoFlag object
 #' 
 #' @export
-AddReferenceData <- function(CF, input, read = FALSE, aggSize = 10000){
+AddReferenceData <- function(CF, input, read = FALSE, n = 1000){
   # Check if the paths are already stored in the CytoFlag object
   if ("ref_paths" %in% names(CF)){
     for (path in input){
@@ -92,7 +90,7 @@ AddReferenceData <- function(CF, input, read = FALSE, aggSize = 10000){
         message(paste("Concatenating additional file path", path))
         CF$ref_paths <- c(CF$ref_paths, path)
         if (read == TRUE){
-          CF <- AddData(CF, path, "ref_data", CF$aggSize)
+          CF <- AddData(CF, path, "ref_data", n)
         }
         else {
           # Force re-calculation of data slot if it exists
@@ -108,9 +106,8 @@ AddReferenceData <- function(CF, input, read = FALSE, aggSize = 10000){
     CF$ref_paths <- input
     # You can force READ to already load the reference data
     # Otherwise this is loaded every time you call FeatureGeneration
-    CF$aggSize <- aggSize
     if (read == TRUE){
-      CF <- AddData(CF, input, "ref_data", aggSize)
+      CF <- AddData(CF, input, "ref_data", n)
     }
   }
   return(CF)
@@ -122,12 +119,12 @@ AddReferenceData <- function(CF, input, read = FALSE, aggSize = 10000){
 #' @param CF CytoFlag object
 #' @param input List of FCS file paths
 #' @param read Whether to read FCS files already (default = FALSE)
-#' @param aggSize Total number of cells to read
+#' @param n Total number of cells to read per file (default = 1000)
 #'
 #' @return CytoFlag object
 #' 
 #' @export
-AddTestData <- function(CF, input, read = FALSE, aggSize = 10000){
+AddTestData <- function(CF, input, read = FALSE, n = 1000){
   # Check if the paths are already stored in the CytoFlag object
   if ("test_paths" %in% names(CF)){
     for (path in input){
@@ -135,7 +132,7 @@ AddTestData <- function(CF, input, read = FALSE, aggSize = 10000){
         message(paste("Concatenating additional file path", path))
         CF$test_paths <- c(CF$test_paths, path)
         if (read == TRUE){
-          CF <- AddData(CF, path, "test_data", CF$aggSize)
+          CF <- AddData(CF, path, "test_data", n)
         }
         else {
           # Force re-calculation of data slot if it exists
@@ -151,9 +148,8 @@ AddTestData <- function(CF, input, read = FALSE, aggSize = 10000){
     CF$test_paths <- input
     # You can force READ to already load the reference data
     # Otherwise this is loaded every time you call FeatureGeneration
-    CF$aggSize <- aggSize
     if (read == TRUE){
-      CF <- AddData(CF, input, "test_data", aggSize)
+      CF <- AddData(CF, input, "test_data", n)
     }
   }
   return(CF)
