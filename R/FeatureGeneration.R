@@ -17,7 +17,7 @@ FeatureGeneration <- function(CF, channels, featMethod = "summary", n = 1000,
                               nRecursions = 4){
   # Determine the number of cores to use
   if (cores == "auto"){
-      cores = detectCores() / 2 
+      cores = parallel::detectCores() / 2 
       message(paste("Using 50% of cores:", cores))
   }
   
