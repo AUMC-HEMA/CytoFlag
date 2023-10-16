@@ -85,12 +85,26 @@ AddData <- function(CF, input, slot, aggSize = 10000){
 #' 
 #' @export
 AddReferenceData <- function(CF, input, read = FALSE, aggSize = 10000){
-  # You can force READ to already load the reference data
-  # Otherwise this is loaded every time you call FeatureGeneration
-  CF$ref_paths <- input
-  CF$aggSize <- aggSize
-  if (read == TRUE){
-    CF <- AddData(CF, input, "ref_data", aggSize)
+  # Check if the paths are already stored in the CytoFlag object
+  if ("ref_paths" %in% names(CF)){
+    for (path in input){
+      if (!path %in% CF$ref_paths){
+        message("Concatenating additional file paths")
+        CF$ref_paths <- c(CF$ref_paths, path)
+        if (read == TRUE){
+          CF <- AddData(CF, path, "ref_data", CF$aggSize)
+        }
+      }
+    }
+  }
+  else {
+    CF$ref_paths <- input
+    # You can force READ to already load the reference data
+    # Otherwise this is loaded every time you call FeatureGeneration
+    CF$aggSize <- aggSize
+    if (read == TRUE){
+      CF <- AddData(CF, input, "ref_data", aggSize)
+    }
   }
   return(CF)
 }
@@ -107,12 +121,26 @@ AddReferenceData <- function(CF, input, read = FALSE, aggSize = 10000){
 #' 
 #' @export
 AddTestData <- function(CF, input, read = FALSE, aggSize = 10000){
-  # You can force READ to already load the reference data
-  # Otherwise this is loaded every time you call FeatureGeneration
-  CF$test_paths <- input
-  CF$aggSize <- aggSize
-  if (read == TRUE){
-    CF <- AddData(CF, input, "test_data", aggSize)
+  # Check if the paths are already stored in the CytoFlag object
+  if ("test_paths" %in% names(CF)){
+    for (path in input){
+      if (!path %in% CF$test_paths){
+        message("Concatenating additional file paths")
+        CF$test_paths <- c(CF$test_paths, path)
+        if (read == TRUE){
+          CF <- AddData(CF, path, "test_data", CF$aggSize)
+        }
+      }
+    }
+  }
+  else {
+    CF$test_paths <- input
+    # You can force READ to already load the reference data
+    # Otherwise this is loaded every time you call FeatureGeneration
+    CF$aggSize <- aggSize
+    if (read == TRUE){
+      CF <- AddData(CF, input, "test_data", aggSize)
+    }
   }
   return(CF)
 }
