@@ -94,6 +94,13 @@ AddReferenceData <- function(CF, input, read = FALSE, aggSize = 10000){
         if (read == TRUE){
           CF <- AddData(CF, path, "ref_data", CF$aggSize)
         }
+        else {
+          # Force re-calculation of data slot if it exists
+          if ("ref_data" %in% names(CF)){
+            message("Clearing test_data slot to prevent undesirable output")
+            CF$ref_data <- NULL
+          }
+        }
       }
     }
   }
@@ -129,6 +136,13 @@ AddTestData <- function(CF, input, read = FALSE, aggSize = 10000){
         CF$test_paths <- c(CF$test_paths, path)
         if (read == TRUE){
           CF <- AddData(CF, path, "test_data", CF$aggSize)
+        }
+        else {
+          # Force re-calculation of data slot if it exists
+          if ("test_data" %in% names(CF)){
+            message("Clearing test_data slot to prevent undesirable output")
+            CF$test_data <- NULL
+          }
         }
       }
     }
