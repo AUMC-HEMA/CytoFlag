@@ -31,7 +31,7 @@ AddReferenceLabels <- function(CF, labels){
 }
 
 
-ProcessInput <- function(ff){
+ProcessInput <- function(ff, channels){
   ff <- PeacoQC::RemoveMargins(ff, channels)
   ff <- flowCore::compensate(ff, ff@description$SPILL)
   ff <- flowCore::transform(ff, flowCore::transformList(colnames(ff@description$SPILL), 
