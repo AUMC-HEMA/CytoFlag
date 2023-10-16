@@ -83,7 +83,7 @@ AddData <- function(CF, input, slot, n = 1000){
 #' @return CytoFlag object
 #' 
 #' @export
-AddReferenceData <- function(CF, input, read = FALSE, n = 1000){
+AddReferenceData <- function(CF, input, read = FALSE, reload = FALSE, n = 1000){
   # Check if the paths are already stored in the CytoFlag object
   if ("ref_paths" %in% names(CF) & !reload){
     for (path in input){
