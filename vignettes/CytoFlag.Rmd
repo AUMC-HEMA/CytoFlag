@@ -1,0 +1,196 @@
+---
+title: "CytoFlag"
+author:
+- name: Tim Mocking
+  affiliation: AmsterdamUMC Cancer Center
+- name: Yejin Park
+  affiliation: AmsterdamUMC Cancer Center
+- name: Costa Bachas
+  affiliation: AmsterdamUMC Cancer Center
+# package: CytoFlag
+output:
+  # BiocStyle::pdf_document
+  BiocStyle::html_document
+abstract: |
+  This vignette describes a workflow for analyzing cytometry data using CytoFlag.
+vignette: |
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+# Installation
+
+```{r}
+# Example for when Bioconductor installation is available
+```
+
+# Setting up a CytoFlag workflow
+
+The CytoFlag workflow takes file paths of .fcs files as input. 
+
+## Initializing a CytoFlag object
+
+The first step is always to initialize a CytoFlag object. This object stores all 
+relevant information, from file paths to generated features and outputs.
+
+```{}
+CF <- CytoFlag()
+```
+
+## Adding data to a CytoFlag object
+
+### Adding cytometry data
+
+If you want to use CytoFlag for outlier detection, you add all the data as 
+"test data". This means that all models are trained and outliers are detected
+on the full dataset.
+
+```{r, eval=FALSE}
+CF <- CytoFlag()
+CF <- AddTestData(CF, files) 
+```
+
+If you want to use CytoFlag for novelty, you have to define reference data as
+well.In this case, models will be trained on the reference data, before identifying
+novelties in the test data.
+
+```{r, eval=FALSE}
+CF <- CytoFlag()
+CF <- AddTestData(CF, test_files) 
+CF <- AddReferenceData(CF, ref_files) 
+```
+
+### Adding additional cytometry data
+
+CytoFlag allows for the addition of additional data at a different timepoint.
+
+To add additional data, you call the AddTestData or AddReferenceData functions
+a second time with different input. CytoFlag will identify new files, and will 
+concatenate the new ones.
+
+### Adding labels
+
+If you want to visualize different known variables in CytoFlag visualizations,
+you have to add these to the CytoFlag object as follows:
+
+```{r, eval=FALSE}
+# For test data
+CF <- AddTestLabels(CF, test_labels)
+
+# For reference data
+CF <- AddReferenceLabels(CF, ref_labels)
+```
+
+### Custom pre-processing
+By default, CytoFlag uses the same pre-processing function for all loaded 
+flowframes. This consists of the removal of margin events, compensation using
+the $SPILL variable in the flowframe description, followed by an arcsinh
+transformation with a co-factor of 150.
+
+You can modify this by supplying your own pre-processing function, for example
+by only performing a MinMax normalization.
+
+```{r, eval=FALSE}
+CF <- CytoFlag()
+
+# Define a pre-processing function which only MinMax normalizes the expression
+custom_preprocess <- function(ff){
+  channels <- ff@exprs[,cols]
+  channels <- channels[channels != "Time"]
+  ff@exprs[,channels] <- apply(ff@exprs[,channels], 2, function(x){
+    return((x - quantile(x, 0.001)) / (quantile(x, 0.999) - quantile(x, 0.001)))
+  return(ff)
+}
+
+# Replace the default preprocessing function
+CF$preprocess_function() <- custom_preprocess
+
+# Continue workflow
+# ...
+```
+
+## Feature generation
+
+Feature generation is performed with the "FeatureGeneration" function. The following
+feature generation methods are available:
+
+| **featMethod** | **Description**                                              |
+| -------------- | ------------------------------------------------------------ |
+| "summary"      | Calculates summary statistics for all files (individually)   |
+| "landmarks"    | Calculates landmark statistics for all files (individually)      |
+| "EMD"          | Aggregates data and calculates earth mover's distance to aggregates data |
+| "binning"      | Aggregates data, identifies bin boundaries and calculates bin percentages for all files |
+| "fingerprint"  | Aggregates data, identifies high-dimensional bin boundaries (FlowFP) and calculates bin percentages for all files |
+
+
+The features are added to the object separately for reference and test data.
+
+Currently, if only test data is added, aggregated data is obtained from the 
+test data. If reference data is available, then the reference data is used for 
+aggregation.
+
+
+### Generating features for outlier detection
+
+```{r, eval=FALSE}
+CF <- CytoFlag() 
+CF <- AddTestData(CF, files)
+channels <- c("channelA", "channelB", "channelC")
+CF <- FeatureGeneration(CF, channels = channels, featMethod = "summary")
+```
+
+### Generating features for novelty detection
+
+```{r, eval=FALSE}
+CF <- CytoFlag() 
+CF <- AddTestData(CF, test_files) 
+CF <- AddReferenceData(CF, ref_files) 
+channels <- c("channelA", "channelB", "channelC")
+CF <- FeatureGeneration(CF, channels = channels, featMethod = "summary")
+```
+
+
+## Flagging anomalies
+
+By default, CytoFlag determines a flagging strategy based on the presence of
+reference data. If this is the case, the default "auto" setting of flagStrat
+defaults to novelty detection.
+
+### Flagging anomalies using outlier detection
+
+```{r, eval=FALSE}
+CF <- CytoFlag() 
+CF <- AddTestData(CF, files)
+channels <- c("channelA", "channelB", "channelC")
+CF <- FeatureGeneration(CF, channels = channels, featMethod = "summary")
+CF <- Flag(CF, flagStrat = "outlier")
+```
+
+### Flagging anomalies using novelty detection
+
+```{r, eval=FALSE}
+CF <- CytoFlag() 
+CF <- AddTestData(CF, test_files) 
+CF <- AddReferenceData(CF, ref_files) 
+channels <- c("channelA", "channelB", "channelC")
+CF <- FeatureGeneration(CF, channels = channels, featMethod = "summary")
+CF <- Flag(CF, flagStrat = "novelty")
+```
+
+
+## Detecting potential batch-effect related clusters
+
+TO-DO
+
+## Visualizations
+
+### Visualizing marker distributions
+
+### Visualizing features in 2D space (PCA)
+
+### Visualizing features using heatmaps
+
+### Visualizing marker distributions of anomalous samples
+
+
