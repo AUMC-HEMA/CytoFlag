@@ -3,7 +3,6 @@
 #' @param CF CytoFlag object
 #' @param channels Channels to calculate features for
 #' @param featMethod Feature generation method to use.
-#' Either one of: "summary", "EMD", "binning" or "fingerprint".
 #' @param nRecursions Number of recursions to use for fingerprinting (default = 4)
 #'
 #' @return Dataframe with features (columns) for samples (rows)
@@ -17,37 +16,44 @@ FeatureGeneration <- function(CF, channels, featMethod = "summary",
       message(paste("Using 50% of cores:", cores))
   }
   
-  if (!"test_data" %in% names(CF)){
-    if (!"test_paths" %in% names(CF)){
-      message("No test data or paths found in CytoFlag object")
+  # Summary statistics and landmarks can be generated for individual files
+  if (featMethod %in% c("summary", "landmarks")){
+    if (featMethod == "summary"){
+      func <- SummaryStats
     }
-  }
-  
-  if (featMethod == "summary"){
-    # TO-DO: CHECK IF NOT EMPTY
-    # For summary statistics, use the paths directly
-    if ("ref_paths" %in% names(CF)){
-      CF$features$ref$summary <- SummaryStats(CF, CF$ref_paths, channels, cores)
+    else {
+      func <- LandmarkStats
     }
-    if ("test_paths" %in% names(CF)){
-      CF$features$test$summary <- SummaryStats(CF, CF$test_paths, channels, cores)
+    # Generate features for the ref and test paths slots (if in CF object)
+    for (slot in c("ref", "test")){
+      if (paste0(slot, "_paths") %in% names(CF)){
+        if (!featMethod %in% names(CF$features[[slot]])){
+          # Generate features for all paths
+          print("gen")
+          CF$features[[slot]][[featMethod]] <- func(CF, CF[[paste0(slot, "_paths")]],
+                                                    channels, cores)
+        }
+        else {
+          # Generate features for the new file paths
+          new_paths <- c()
+          for (path in CF[[paste0(slot, "_paths")]]){
+            if (!path %in% rownames(CF$features[[slot]][[featMethod]])){
+              message("Generating additional features")
+              new_paths <- c(new_paths, path)
+            }
+          }
+          if (length(new_paths) == 0){
+            next
+          } 
+          else {
+            new_stats <- func(CF, new_paths, channels, cores)
+          }
+          CF$features[[slot]][[featMethod]] <- rbind(CF$features[[slot]][[featMethod]], 
+                                                     new_stats)
+        }
+      }
     }
     return(CF)
-  }
-  
-  if (featMethod == "landmarks"){
-    # TO-DO:
-    # CHECK IF LANDMARKS HAVE BEEN GENERATED FOR ALL CHANNELS
-    if ("ref_data" %in% names(CF)){
-      CF$features$ref$landmarks <- LandmarkStats(CF, CF$ref_paths, channels,
-                                                 cores)
-      CF$features$test$landmarks <- LandmarkStats(CF, CF$test_paths, channels,
-                                                  cores)
-    }
-    else if ("test_data" %in% names(CF)){
-      CF$features$test$landmarks <- LandmarkStats(CF, CF$test_paths, channels,
-                                                  cores)
-    }
   }
   
   # Everything from here on depends on aggregated data for features
