@@ -89,7 +89,7 @@ AddReferenceData <- function(CF, input, read = FALSE, aggSize = 10000){
   if ("ref_paths" %in% names(CF)){
     for (path in input){
       if (!path %in% CF$ref_paths){
-        message("Concatenating additional file paths")
+        message(paste("Concatenating additional file path", path))
         CF$ref_paths <- c(CF$ref_paths, path)
         if (read == TRUE){
           CF <- AddData(CF, path, "ref_data", CF$aggSize)
@@ -125,7 +125,7 @@ AddTestData <- function(CF, input, read = FALSE, aggSize = 10000){
   if ("test_paths" %in% names(CF)){
     for (path in input){
       if (!path %in% CF$test_paths){
-        message("Concatenating additional file paths")
+        message(paste("Concatenating additional file path", path))
         CF$test_paths <- c(CF$test_paths, path)
         if (read == TRUE){
           CF <- AddData(CF, path, "test_data", CF$aggSize)
