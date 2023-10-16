@@ -1,6 +1,6 @@
 Package: CytoFlag
 Type: Package
-Title: Automated flagging of anomalous cytometry files in large cohorts
+Title: Anomaly detection in large cytometry cohorts
 Version: 0.1.0
 Author: Tim Mocking
 Maintainer: Tim Mocking <t.r.mocking@amsterdamumc.nl>
