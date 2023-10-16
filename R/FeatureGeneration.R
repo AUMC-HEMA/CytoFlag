@@ -3,6 +3,7 @@
 #' @param CF CytoFlag object
 #' @param channels Channels to calculate features for
 #' @param featMethod Feature generation method to use
+#' @param n How many cells to use for feature generation
 #' @param aggSlot Whether to use reference or test data as aggregate (default = "auto")
 #' @param cores How many cores to use for parallelization (default = 50%)
 #' @param recalculate Whether to recalculate features for existing data
@@ -11,7 +12,7 @@
 #' @return Dataframe with features (columns) for samples (rows)
 #' 
 #' @export
-FeatureGeneration <- function(CF, channels, featMethod = "summary", 
+FeatureGeneration <- function(CF, channels, featMethod = "summary", n = 1000,
                               aggSlot = "auto", cores = "auto", recalculate = FALSE, 
                               nRecursions = 4){
   # Determine the number of cores to use
@@ -34,7 +35,7 @@ FeatureGeneration <- function(CF, channels, featMethod = "summary",
         if (!featMethod %in% names(CF$features[[slot]]) || recalculate == TRUE){
           # Generate features for all paths
           CF$features[[slot]][[featMethod]] <- func(CF, CF[[paste0(slot, "_paths")]],
-                                                    channels, cores)
+                                                    channels, n, cores)
         }
         else {
           # Generate features for the new file paths
@@ -51,7 +52,7 @@ FeatureGeneration <- function(CF, channels, featMethod = "summary",
             next
           } 
           else {
-            new_stats <- func(CF, new_paths, channels, cores)
+            new_stats <- func(CF, new_paths, channels, n, cores)
           }
           CF$features[[slot]][[featMethod]] <- rbind(CF$features[[slot]][[featMethod]], 
                                                      new_stats)
@@ -67,58 +68,58 @@ FeatureGeneration <- function(CF, channels, featMethod = "summary",
       agg <- as.matrix((dplyr::bind_rows(CF$ref_data)))
     }
     else if ("ref_paths" %in% names(CF)){
-      CF <- AddReferenceData(CF, CF$ref_paths, read = TRUE)
+      CF <- AddReferenceData(CF, CF$ref_paths, read = TRUE, reload = TRUE, n = n)
       agg <- as.matrix((dplyr::bind_rows(CF$ref_data)))
     }
     else if ("test_data" %in% names(CF)){
       agg <- as.matrix((dplyr::bind_rows(CF$test_data)))
     }
     else if ("test_paths" %in% names(CF)){
-      CF <- AddTestData(CF, CF$test_paths, read = TRUE)
+      CF <- AddTestData(CF, CF$test_paths, read = TRUE, reload = TRUE, n = n)
       agg <- as.matrix((dplyr::bind_rows(CF$test_data)))
     }
   }
   else {
     agg <- as.matrix((dplyr::bind_rows(CF[[paste0(aggSlot, "_data")]])))
   }
-  
+
   if (featMethod == "binning"){
     if ("ref_data" %in% names(CF)){
-      CF$features$ref$binning <- Bin(CF, CF$ref_paths, agg, channels, cores)
-      CF$features$test$binning <- Bin(CF, CF$test_paths, agg, channels, cores)
+      CF$features$ref$binning <- Bin(CF, CF$ref_paths, agg, channels, n, cores)
+      CF$features$test$binning <- Bin(CF, CF$test_paths, agg, channels, n, cores)
     }
     else if ("test_data" %in% names(CF)){
-      CF$features$test$binning <- Bin(CF, CF$test_paths, agg, channels, cores)
+      CF$features$test$binning <- Bin(CF, CF$test_paths, agg, channels, n, cores)
     }
   }
   
   if (featMethod == "EMD"){
     if ("ref_data" %in% names(CF)){
-      CF$features$ref$EMD <- EMD(CF, CF$ref_paths, agg, channels, cores)
-      CF$features$test$EMD <- EMD(CF, CF$test_paths, agg, channels, cores)
+      CF$features$ref$EMD <- EMD(CF, CF$ref_paths, agg, channels, n, cores)
+      CF$features$test$EMD <- EMD(CF, CF$test_paths, agg, channels, n, cores)
     }
     else if ("test_data" %in% names(CF)){
-      CF$features$test$EMD <- EMD(CF, CF$test_paths, agg, channels, cores)
+      CF$features$test$EMD <- EMD(CF, CF$test_paths, agg, channels, n, cores)
     }
   }
   
   if (featMethod == "fingerprint"){
     if ("ref_data" %in% names(CF)){
       CF$features$ref$fingerprint <- Fingerprint(CF, CF$ref_paths, agg, channels, 
-                                                 cores, nRecursions)
+                                                 n, cores, nRecursions)
       CF$features$test$fingerprint <- Fingerprint(CF, CF$test_paths, agg, channels, 
-                                                  cores, nRecursions)
+                                                  n, cores, nRecursions)
     }
     else if ("test_data" %in% names(CF)){
       CF$features$test$fingerprint <- Fingerprint(CF, CF$test_paths, agg, channels, 
-                                                  cores, nRecursions)
+                                                  n, cores, nRecursions)
     }
   }
   return(CF)
 }
 
 
-calculateSummary <- function(CF, path, channels, n = 1000){
+calculateSummary <- function(CF, path, channels, n){
   ff <- ReadInput(CF, path, n = n)
   stats <- list()
   for (channel in channels){
@@ -131,7 +132,7 @@ calculateSummary <- function(CF, path, channels, n = 1000){
 }
 
 
-SummaryStats <- function(CF, input, channels, cores){
+SummaryStats <- function(CF, input, channels, n, cores){
   if (cores > 1){
     cl <- parallel::makeCluster(cores)
     doParallel::registerDoParallel(cl)
@@ -139,7 +140,7 @@ SummaryStats <- function(CF, input, channels, cores){
     `%dopar%` <- foreach::`%dopar%`
     all_stats <- foreach::foreach(path = input, .combine = "c", 
                            .packages = CF[["parallel_packages"]]) %dopar% {
-                           stats <- list(calculateSummary(CF, path, channels))
+                           stats <- list(calculateSummary(CF, path, channels, n))
                            names(stats) <- path
                            return(stats)
                          }
@@ -148,7 +149,7 @@ SummaryStats <- function(CF, input, channels, cores){
   else {
     all_stats <- list()
     for (path in input){
-      stats <- calculateSummary(CF, path, channels)
+      stats <- calculateSummary(CF, path, channels, n)
       all_stats[[path]] <- stats
     }
   }
@@ -158,7 +159,7 @@ SummaryStats <- function(CF, input, channels, cores){
 }
 
 
-calculateLandmarks <- function(CF, path, channels, n = 1000){
+calculateLandmarks <- function(CF, path, channels, n){
   ff <- ReadInput(CF, path, n = n)
   df <- data.frame(ff@exprs[,channels], check.names = FALSE)
   stats <- list()
@@ -185,7 +186,7 @@ calculateLandmarks <- function(CF, path, channels, n = 1000){
 }
 
 
-LandmarkStats <- function(CF, input, channels, cores){
+LandmarkStats <- function(CF, input, channels, n, cores){
   if (cores > 1){
     cl <- parallel::makeCluster(cores)
     doParallel::registerDoParallel(cl)
@@ -193,7 +194,7 @@ LandmarkStats <- function(CF, input, channels, cores){
     `%dopar%` <- foreach::`%dopar%`
     all_stats <- foreach::foreach(path = input, .combine = "c", 
                                   .packages = CF[["parallel_packages"]]) %dopar% {
-                                  stats <- list(calculateLandmarks(CF, path, channels))
+                                  stats <- list(calculateLandmarks(CF, path, channels, n))
                                   names(stats) <- path
                                   return(stats)
                                   }
@@ -201,7 +202,7 @@ LandmarkStats <- function(CF, input, channels, cores){
   } else {
     all_stats <- list()
     for (path in input){
-      all_stats[[path]] <- calculateLandmarks(CF, path, channels)
+      all_stats[[path]] <- calculateLandmarks(CF, path, channels, n)
     }
   }
   stats <- data.frame(dplyr::bind_rows(all_stats), check.names = FALSE)
@@ -212,7 +213,7 @@ LandmarkStats <- function(CF, input, channels, cores){
 }
 
 
-calculateEMD <- function(CF, path, agg, channels, n = 1000){
+calculateEMD <- function(CF, path, agg, channels, n){
   ff <- ReadInput(CF, path, n = n)
   stats <- list()
   for (channel in channels){
@@ -223,7 +224,7 @@ calculateEMD <- function(CF, path, agg, channels, n = 1000){
 }
 
 
-EMD <- function(CF, input, agg, channels, cores){
+EMD <- function(CF, input, agg, channels, n, cores){
   agg <- agg
   if (cores > 1){
     cl <- parallel::makeCluster(cores)
@@ -233,7 +234,7 @@ EMD <- function(CF, input, agg, channels, cores){
     `%dopar%` <- foreach::`%dopar%`
     all_stats <- foreach::foreach(path = input, .combine = "c", 
                                   .packages = c(CF[["parallel_packages"]], "transport")) %dopar% {
-                                    stats <- list(calculateEMD(CF, path, agg, channels))
+                                    stats <- list(calculateEMD(CF, path, agg, channels, n))
                                     names(stats) <- path
                                     return(stats)
                                   }
@@ -242,7 +243,7 @@ EMD <- function(CF, input, agg, channels, cores){
   else {
     all_stats <- list()
     for (path in input){
-      all_stats[[path]] <- calculateEMD(CF, path, agg, channels)
+      all_stats[[path]] <- calculateEMD(CF, path, agg, channels, n)
     }
   }
   stats <- data.frame(dplyr::bind_rows(all_stats), check.names = FALSE)
@@ -251,7 +252,7 @@ EMD <- function(CF, input, agg, channels, cores){
 }
 
 
-calculateFingerprint <- function(CF, path, model, channels, n = 1000){
+calculateFingerprint <- function(CF, path, model, channels, n){
   ff <- ReadInput(CF, path, n = n)
   call = flowFP::flowFP(ff[, channels], model)
   bin_counts = flowFP::counts(call)
@@ -262,7 +263,7 @@ calculateFingerprint <- function(CF, path, model, channels, n = 1000){
 }
 
 
-Fingerprint <- function(CF, input, agg, channels, cores, nRecursions = 4){
+Fingerprint <- function(CF, input, agg, channels, n, cores, nRecursions = 4){
   # Convert aggregated matrix to flowframe
   agg <- flowCore::flowFrame(agg[,channels])
   message("Fitting flowFP fingerprinting model")
@@ -276,7 +277,7 @@ Fingerprint <- function(CF, input, agg, channels, cores, nRecursions = 4){
     `%dopar%` <- foreach::`%dopar%`
     all_stats <- foreach::foreach(path = input, .combine = "c", 
                                   .packages = c(CF[["parallel_packages"]], "flowFP")) %dopar% {
-                                  stats <- calculateFingerprint(CF, path, model, channels)
+                                  stats <- calculateFingerprint(CF, path, model, channels, n)
                                   names(stats) <- path
                                   return(stats)
                                   }
@@ -284,7 +285,7 @@ Fingerprint <- function(CF, input, agg, channels, cores, nRecursions = 4){
   } else {
     all_stats <- list()
     for (path in input){
-      all_stats[[path]] <- calculateFingerprint(CF, path, model, channels)
+      all_stats[[path]] <- calculateFingerprint(CF, path, model, channels, n)
     }
   }
   stats <- data.frame(dplyr::bind_rows(all_stats), check.names = FALSE)
@@ -293,7 +294,7 @@ Fingerprint <- function(CF, input, agg, channels, cores, nRecursions = 4){
 }
 
 
-calculateBins <- function(CF, path, bin_boundaries, channels, n = 1000){
+calculateBins <- function(CF, path, bin_boundaries, channels, n){
   ff <- ReadInput(CF, path, n = n)
   df <- data.frame(ff@exprs[,channels], check.names=FALSE)
   stats <- c()
@@ -310,7 +311,7 @@ calculateBins <- function(CF, path, bin_boundaries, channels, n = 1000){
 }
 
 
-Bin <- function(CF, input, agg, channels, cores){
+Bin <- function(CF, input, agg, channels, n, cores){
   # Determine the bins on the aggregated data
   message("Determining bin boundaries on aggregated data")
   bin_boundaries <- apply(agg[,channels], 2, 
@@ -324,7 +325,8 @@ Bin <- function(CF, input, agg, channels, cores){
     `%dopar%` <- foreach::`%dopar%`
     all_stats <- foreach::foreach(path = input, .combine = "c", 
                                   .packages = CF[["parallel_packages"]]) %dopar% {
-                                    stats <- calculateBins(CF, path, bin_boundaries, channels)
+                                    stats <- calculateBins(CF, path, bin_boundaries, 
+                                                           channels, n)
                                     names(stats) <- path
                                     return(stats)
                                   }
@@ -333,7 +335,7 @@ Bin <- function(CF, input, agg, channels, cores){
   else {
     all_stats <- list()
     for (path in input){
-      all_stats[[path]] <- calculateBins(CF, path, bin_boundaries, channels)
+      all_stats[[path]] <- calculateBins(CF, path, bin_boundaries, channels, n)
     }
   }
   stats <- data.frame(dplyr::bind_rows(all_stats), check.names = FALSE)

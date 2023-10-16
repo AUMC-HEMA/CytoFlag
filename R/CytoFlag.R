@@ -7,7 +7,7 @@ CytoFlag <- function(){
   CF <- list(list())
   class(CF) <- "CytoFlag"
   CF[["preprocess_function"]] <- ProcessInput
-  CF[["parallel_vars"]] <- c("channels", "CF", "ReadInput")
+  CF[["parallel_vars"]] <- c("channels", "n", "CF", "ReadInput")
   CF[["parallel_packages"]] <- c("flowCore", "PeacoQC")
   return(CF)
 }
@@ -77,6 +77,7 @@ AddData <- function(CF, input, slot, n = 1000){
 #' @param CF CytoFlag object
 #' @param input List of FCS file paths
 #' @param read Whether to read FCS files already (default = FALSE)
+#' @param reload Whether to read ALL fcs files, including previously loaded (default = FALSE)
 #' @param n Total number of cells to read per file (default = 1000)
 #'
 #' @return CytoFlag object
@@ -84,7 +85,7 @@ AddData <- function(CF, input, slot, n = 1000){
 #' @export
 AddReferenceData <- function(CF, input, read = FALSE, n = 1000){
   # Check if the paths are already stored in the CytoFlag object
-  if ("ref_paths" %in% names(CF)){
+  if ("ref_paths" %in% names(CF) & !reload){
     for (path in input){
       if (!path %in% CF$ref_paths){
         message(paste("Concatenating additional file path", path))
@@ -92,20 +93,11 @@ AddReferenceData <- function(CF, input, read = FALSE, n = 1000){
         if (read == TRUE){
           CF <- AddData(CF, path, "ref_data", n)
         }
-        else {
-          # Force re-calculation of data slot if it exists
-          if ("ref_data" %in% names(CF)){
-            message("Clearing test_data slot to prevent undesirable output")
-            CF$ref_data <- NULL
-          }
-        }
       }
     }
   }
   else {
     CF$ref_paths <- input
-    # You can force READ to already load the reference data
-    # Otherwise this is loaded every time you call FeatureGeneration
     if (read == TRUE){
       CF <- AddData(CF, input, "ref_data", n)
     }
@@ -119,14 +111,15 @@ AddReferenceData <- function(CF, input, read = FALSE, n = 1000){
 #' @param CF CytoFlag object
 #' @param input List of FCS file paths
 #' @param read Whether to read FCS files already (default = FALSE)
+#' @param reload Whether to read ALL fcs files, including previously loaded (default = FALSE)
 #' @param n Total number of cells to read per file (default = 1000)
 #'
 #' @return CytoFlag object
 #' 
 #' @export
-AddTestData <- function(CF, input, read = FALSE, n = 1000){
+AddTestData <- function(CF, input, read = FALSE, reload = FALSE, n = 1000){
   # Check if the paths are already stored in the CytoFlag object
-  if ("test_paths" %in% names(CF)){
+  if ("test_paths" %in% names(CF) & !reload){
     for (path in input){
       if (!path %in% CF$test_paths){
         message(paste("Concatenating additional file path", path))
@@ -134,20 +127,11 @@ AddTestData <- function(CF, input, read = FALSE, n = 1000){
         if (read == TRUE){
           CF <- AddData(CF, path, "test_data", n)
         }
-        else {
-          # Force re-calculation of data slot if it exists
-          if ("test_data" %in% names(CF)){
-            message("Clearing test_data slot to prevent undesirable output")
-            CF$test_data <- NULL
-          }
-        }
       }
     }
   }
   else {
     CF$test_paths <- input
-    # You can force READ to already load the reference data
-    # Otherwise this is loaded every time you call FeatureGeneration
     if (read == TRUE){
       CF <- AddData(CF, input, "test_data", n)
     }
@@ -174,21 +158,21 @@ Flag <- function(CF, featMethod = NULL, flagStrat = "auto", flagMethod = "KDE",
   # Detect  flagging strategy if not supplied based on CytoFlag object
   if (flagStrat == "auto"){
     if ("test" %in% names(CF$features) & "ref" %in% names(CF$features)){
-      message("Detected reference and test data, flagging samples using novelty detection.")
+      message("Detected reference and test data, flagging samples using novelty detection")
       flagStrat <- "novelty"
     }
     else if ("test" %in% names(CF$features)){
-      message("Detected only test data, flagging samples using outlier detection.")
+      message("Detected only test data, flagging samples using outlier detection")
       flagStrat <- "outlier"
     }
     else {
-      stop("Did not detect generated features in CytoFlag object.")
+      stop("Did not detect generated features in CytoFlag object")
     }
   }
   
   # Warn of non-supported combinations of flagging and algorithms
   if (flagStrat == "novelty" & flagMethod == "forest"){
-    stop("Isolation forest is not supported for novelty detection.")
+    stop("Isolation forest is not supported for novelty detection")
   }
   
   # Get the features
