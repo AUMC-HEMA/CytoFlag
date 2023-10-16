@@ -4,13 +4,16 @@
 #' @param channels Channels to calculate features for
 #' @param featMethod Feature generation method to use
 #' @param aggSlot Whether to use reference or test data as aggregate (default = "auto")
+#' @param cores How many cores to use for parallelization (default = 50%)
+#' @param recalculate Whether to recalculate features for existing data
 #' @param nRecursions Number of recursions to use for fingerprinting (default = 4)
 #'
 #' @return Dataframe with features (columns) for samples (rows)
 #' 
 #' @export
 FeatureGeneration <- function(CF, channels, featMethod = "summary", 
-                              aggSlot = "auto", cores = "auto", nRecursions = 4){
+                              aggSlot = "auto", cores = "auto", recalculate = FALSE, 
+                              nRecursions = 4){
   # Determine the number of cores to use
   if (cores == "auto"){
       cores = detectCores() / 2 
@@ -28,7 +31,7 @@ FeatureGeneration <- function(CF, channels, featMethod = "summary",
     # Generate features for the ref and test paths slots (if in CF object)
     for (slot in c("ref", "test")){
       if (paste0(slot, "_paths") %in% names(CF)){
-        if (!featMethod %in% names(CF$features[[slot]])){
+        if (!featMethod %in% names(CF$features[[slot]]) || recalculate == TRUE){
           # Generate features for all paths
           CF$features[[slot]][[featMethod]] <- func(CF, CF[[paste0(slot, "_paths")]],
                                                     channels, cores)
@@ -43,6 +46,8 @@ FeatureGeneration <- function(CF, channels, featMethod = "summary",
             }
           }
           if (length(new_paths) == 0){
+            message(paste("Did not detect any new files for", slot, "slot"))
+            message("Force re-calculation of statistics in this slot using recalculate = TRUE.")
             next
           } 
           else {
