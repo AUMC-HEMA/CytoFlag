@@ -5,7 +5,7 @@ get_FCS_metadata <- function(paths){
   # Returns:
   #   dataframe containing metadata information on every file used for downstream
   #   QC and plotting.
-  headers <- read.FCSheader(paths)
+  headers <- flowCore::read.FCSheader(paths)
   # Iterate over the headers and convert them to dataframes
   parameter_list <- list()
   for (i in 1:length(headers)) {

@@ -28,9 +28,9 @@ register_landmarks <- function(CF, channel, adjust = 1,
   # Depending on the distribution of the data, percentile distances can vary
   # We assume that the median is a robust estimate
   percentiles <- sapply(1:100, function(p) {
-    quantile(data[,channel], probs = p/100)})
+    stats::quantile(data[,channel], probs = p/100)})
   percentile_dist <- diff(percentiles)
-  median_dist <- median(percentile_dist)
+  median_dist <- stats::median(percentile_dist)
   min_peak_dist <- median_dist * min_peak_dist
   # Calculate how many indices in the density profile this equates to
   min_peak_indices <- round(min_peak_dist / diff(kde$x)[1], 0)
@@ -67,15 +67,15 @@ register_landmarks <- function(CF, channel, adjust = 1,
       return(NA)
     }
     kde_ref$peak <- as.factor(sapply(kde_ref$x, mark_agg_peaks))
-    p1 <- ggplot(kde_ref, aes(x, index, height = y, group = index, fill = peak)) +
-      geom_ridgeline_gradient(scale=5) +
-      theme_minimal() + 
-      theme(axis.text.y = element_blank(),
-            axis.ticks.y = element_blank(),
-            axis.title.y = element_blank(),
+    p1 <- ggplot2::ggplot(kde_ref, aes(x, index, height = y, group = index, fill = peak)) +
+      ggridges::geom_ridgeline_gradient(scale=5) +
+      ggplot2::theme_minimal() + 
+      ggplot2::theme(axis.text.y = ggplot2::element_blank(),
+            axis.ticks.y = ggplot2::element_blank(),
+            axis.title.y = ggplot2::element_blank(),
             legend.position = "none") +
-      labs(x = channel) +
-      ggtitle("Aggregated data")
+      ggplot2::labs(x = channel) +
+      ggplot2::ggtitle("Aggregated data")
     
     # Run KDE for each individual file and mark peaks from aggregate
     kde_list <- list()
@@ -86,7 +86,7 @@ register_landmarks <- function(CF, channel, adjust = 1,
       # Read input
       ff <- ReadInput(CF, CF$test_paths[[i]], n=1000)
       df <- data.frame(ff@exprs, check.names=FALSE)
-      df <- df[df[,channel] > quantile(df[,channel], 0.001) & df[,channel] < quantile(df[,channel], 0.999), ]
+      df <- df[df[,channel] > stats::quantile(df[,channel], 0.001) & df[,channel] < stats::quantile(df[,channel], 0.999), ]
       
       # WARNING
       # Make sure to use the same bandwidth (???)

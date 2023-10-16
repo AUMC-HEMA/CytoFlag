@@ -21,7 +21,8 @@ Imports:
   VIM (>= 6.2.2),
   mclust (>= 6.0.0),
   doParallel (>= 1.0.17),
-  foreach (>= 1.5.2)
+  foreach (>= 1.5.2),
+  ComplexHeatmap (>= 2.16.0)
 RoxygenNote: 7.2.3
 Suggests: 
     knitr,

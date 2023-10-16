@@ -108,7 +108,7 @@ PlotHeatmap <- function(CF, featMethod, includeRef = "auto", flagMethod = NULL,
 
   # Plot
   p <- ComplexHeatmap::pheatmap(mat[,featNames], cluster_cols = FALSE,
-                           color = colorRampPalette(rev(c("red", "white", "blue")))(100), 
+                           color = grDevices::colorRampPalette(rev(c("red", "white", "blue")))(100), 
                            show_rownames = TRUE, show_colnames = TRUE, 
                            scale = "column",
                            annotation_row = annot_data,
@@ -233,7 +233,7 @@ PlotPCA <- function(CF, featMethod, includeRef = "auto", flagMethod = NULL,
 PlotAnomaly <- function(CF, idx, channel, n = 500, includeRef = "auto"){
   # Read the anomalous data
   ff_anom <- ReadInput(CF, CF$test_paths[idx], n = n)
-  df_anom <- data.frame(ff_anom@exprs[,channels], check.names=FALSE)
+  df_anom <- data.frame(ff_anom@exprs, check.names=FALSE)
   df_anom$index <- as.character(idx)
   df_anom$category <- "Outlier"
   
