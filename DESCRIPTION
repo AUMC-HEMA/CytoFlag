@@ -17,9 +17,11 @@ Imports:
   PeacoQC (>= 1.10.0),
   ks (>= 1.14.0),
   ggplot2 (>= 3.4.3),
+  gridExtra (>= 2.3),
   ggridges (>= 0.5.4),
   VIM (>= 6.2.2),
   mclust (>= 6.0.0),
+  pracma (>= 2.4.2),
   doParallel (>= 1.0.17),
   foreach (>= 1.5.2),
   ComplexHeatmap (>= 2.16.0)
