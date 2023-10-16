@@ -2,6 +2,8 @@
 #' 
 #' Function to initialize CytoFlag workflow. Returns CytoFlab object
 #' 
+#' @return Default initialized CytoFlag object
+#' 
 #' @export
 CytoFlag <- function(){
   CF <- list(list())
