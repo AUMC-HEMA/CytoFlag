@@ -12,11 +12,14 @@ Imports:
   flowCore (>= 1.11.20),
   dplyr (>= 1.1.2),
   isotree (>= 0.5.20),
-  FlowSOM (>= 2.8.0),
   transport (>= 0.14-6),
   flowFP (>= 1.58.0),
-  PeacoQC (>= 1.11.0),
-  ks (>= 1.14.0)
+  PeacoQC (>= 1.10.0),
+  ks (>= 1.14.0),
+  ggplot2 (>= 3.4.3),
+  ggplot2 (>= 0.5.4),
+  VIM (>= 6.2.2),
+  mclust (>= 6.0.0)
 RoxygenNote: 7.2.3
 Suggests: 
     knitr,
