@@ -1,38 +1,26 @@
-PrepareFeaturePlot <- function(CF, featMethod, includeRef = "auto", 
-                               flagMethod = NULL, flagSlot = "auto"){
+PrepareFeaturePlot <- function(CF, featMethod, plotRef, flagSlot){
   testFeatures <- CF$features$test[[featMethod]]
   refFeatures <- NULL
   testAnomaly <- NULL
   testLabels <- NULL
   refLabels <- NULL
-  featNames <- colnames(testFeatures)
-  
+
+  # Check for the presence of labels
   if ("test" %in% names(CF$labels)){
     testLabels <- CF$labels$test
   }
   
-  # Check if reference is included in object
-  if (includeRef == "auto") {
-    includeRef <- "ref" %in% names(CF$features)
-  }
-  if (includeRef){
+  if (plotRef){
     refFeatures <- CF$features$ref[[featMethod]]
     if ("ref" %in% names(CF$labels)){
       refLabels <- CF$labels$ref
     }
   }
   
-  if (!is.null(flagMethod)){
-    # Detect if novelties and/or outliers have already been flagged
-    if (flagSlot == "auto"){
-      if ("novelties" %in% names(CF)){
-        flagSlot <- "novelties"
-      }
-      else if ("outliers" %in% names(CF)){
-        flagSlot <- "outliers"
-      }
+  if (!is.null(flagSlot)){
+    if (featMethod %in% names(CF[[flagSlot]])){
+      testAnomaly <- CF[[flagSlot]][[featMethod]]
     }
-    testAnomaly <- CF[[flagSlot]][[flagMethod]]
   }
   return(list("refFeatures" = refFeatures,
               "testFeatures" = testFeatures,
@@ -46,14 +34,14 @@ PrepareFeaturePlot <- function(CF, featMethod, includeRef = "auto",
 #'
 #' @param CF CytoFlag object
 #' @param featMethod Which generated features to plot
-#' @param includeRef Whether to visualize reference data (default = "auto")
-#' @param flagMethod Which flagging method to plot (default = NULL)
-#' @param flagSlot Whether to use outlier or novelty flags (default = "auto")
+#' @param plotRef Whether to visualize reference, if available (default = TRUE)
+#' @param flagSlot Flags to plot (NULL, "outliers", "novelties") (default = NULL)
+#' @param plotLabels Whether to plot supplied labels
 #'
 #' @return Heatmap plot
-PlotHeatmap <- function(CF, featMethod, includeRef = "auto", flagMethod = NULL, 
-                        flagSlot = "auto", plotLabels = FALSE){
-  features <- PrepareFeaturePlot(CF, featMethod, includeRef, flagMethod, flagSlot)
+PlotHeatmap <- function(CF, featMethod, plotRef = FALSE, 
+                        flagSlot = NULL, plotLabels = FALSE){
+  features <- PrepareFeaturePlot(CF, featMethod, plotRef, flagSlot)
   testFeatures <- features$testFeatures
   featNames <- colnames(testFeatures)
   refFeatures <- features$refFeatures
@@ -61,13 +49,13 @@ PlotHeatmap <- function(CF, featMethod, includeRef = "auto", flagMethod = NULL,
   testLabels <- features$testLabels
   refLabels <- features$refLabels
   
-  if (!is.null(refFeatures)){
+  if (plotRef){
     refFeatures$category <- "reference"
     testFeatures$category <- "test"
     testFeatures$labels <- testLabels
     refFeatures$labels <- refLabels
     
-    if (!is.null(testAnomaly)){
+    if (!is.null(flagSlot)){
       testFeatures$anomaly <- testAnomaly
       refFeatures$anomaly <- FALSE
     }
@@ -101,58 +89,55 @@ PlotHeatmap <- function(CF, featMethod, includeRef = "auto", flagMethod = NULL,
   }
   annot_data <- features[, cols]
   colnames(annot_data) <- cols
-
+  
   # Prepare pheatmap
   mat <- as.matrix(features[,featNames])
   rownames(mat) <- seq(1, nrow(mat))
-
+  
   # Plot
   p <- ComplexHeatmap::pheatmap(mat[,featNames], cluster_cols = FALSE,
-                           color = grDevices::colorRampPalette(rev(c("red", "white", "blue")))(100), 
-                           show_rownames = TRUE, show_colnames = TRUE, 
-                           scale = "column",
-                           annotation_row = annot_data,
-                           annotation_colors = annot_colors)
+                                color = grDevices::colorRampPalette(rev(c("red", "white", "blue")))(100), 
+                                show_rownames = TRUE, show_colnames = TRUE, 
+                                scale = "column",
+                                annotation_row = annot_data,
+                                annotation_colors = annot_colors)
   return(p)
 }
-  
+
 
 #' Plot PCA
 #'
 #' @param CF CytoFlag object
 #' @param featMethod Which generated features to plot
-#' @param includeRef Whether to visualize reference data (default = "auto")
-#' @param flagMethod Which flagging method to plot (default = NULL)
-#' @param flagSlot Whether to use outlier or novelty flags (default = "auto")
-#' @param arrows Whether to plot loadings (default = FALSE)
-#' @param ids Whether to plot IDs of anomalies (default = TRUE)
-#' @param colors What to use for colors ("anomalies" or "labels")
+#' @param plotRef Whether to visualize reference, if available (default = TRUE)
+#' @param flagSlot Flags to plot (NULL, "outliers", "novelties") (default = NULL)
+#' @param ids Whether to plot indices of anomalies (default = FALSE)
+#' @param plotLabels Whether to plot supplied labels, overrides flagSlot
 #'
 #' @return PCA plot
-PlotPCA <- function(CF, featMethod, includeRef = "auto", flagMethod = NULL, 
-                    flagSlot = "auto", arrows = FALSE, ids = TRUE,
-                    color = "anomaly"){
-  features <- PrepareFeaturePlot(CF, featMethod, includeRef, flagMethod, flagSlot)
+PlotPCA <- function(CF, featMethod, plotRef = FALSE,
+                    flagSlot = NULL, ids = FALSE, plotLabels = FALSE){
+  features <- PrepareFeaturePlot(CF, featMethod, plotRef, flagSlot)
   testFeatures <- features$testFeatures
   featNames <- colnames(testFeatures)
   refFeatures <- features$refFeatures
   testAnomaly <- features$testAnomaly
   testLabels <- features$testLabels
   refLabels <- features$refLabels
-
-  if (!is.null(refFeatures)){
+  
+  if (plotRef){
     # Reduce to first two principal components
-    PCAOutput <- reduceDim(testFeatures = testFeatures[,featNames], 
+    PCAOutput <- reduceDim(testFeatures = testFeatures[, featNames],
                            flagStrat = "novelty",
-                           refFeatures[,featNames])
+                           refFeatures[, featNames])
     testFeatures <- PCAOutput[["testFeatures"]]
     refFeatures <- PCAOutput[["refFeatures"]]
-    testFeatures$index <- rownames(testFeatures)
-    refFeatures$index <- rownames(refFeatures)
+    testFeatures$index <- seq(1, nrow(testFeatures))
+    refFeatures$index <- seq(1, nrow(refFeatures))
     refFeatures$category <- "reference"
     refFeatures$labels <- refLabels
-    
-    if (!is.null(testAnomaly)){
+
+    if (!is.null(flagSlot)){
       testFeatures$anomaly <- testAnomaly
       refFeatures$anomaly <- FALSE
     }
@@ -162,13 +147,13 @@ PlotPCA <- function(CF, featMethod, includeRef = "auto", flagMethod = NULL,
   }
   else{
     # Reduce to first two principal components
-    PCAOutput <- reduceDim(testFeatures = testFeatures[,featNames], 
+    PCAOutput <- reduceDim(testFeatures = testFeatures[,featNames],
                            flagStrat = "outlier")
     testFeatures <- PCAOutput[["testFeatures"]]
-    testFeatures$index <- rownames(testFeatures)
+    testFeatures$index <- seq(1, nrow(testFeatures))
     testFeatures$category <- "test"
     testFeatures$labels <- testLabels
-    if (!is.null(testAnomaly)){
+    if (!is.null(flagSlot)){
       testFeatures$anomaly <- testAnomaly
     }
     features <- testFeatures
@@ -177,54 +162,48 @@ PlotPCA <- function(CF, featMethod, includeRef = "auto", flagMethod = NULL,
   loadings$variable <- rownames(loadings)
   PC1_var <- PCAOutput[["PC1_var"]]
   PC2_var <- PCAOutput[["PC2_var"]]
-
-  # Plot
+  
   loadScale <- 3
-  p <- ggplot2::ggplot(features, ggplot2::aes(x = .data[["PC1"]], 
-                                              y = .data[["PC2"]], 
-                                              colour = .data[[color]])) +
-    ggplot2::xlab(paste0("PC1 (", round(PC1_var, 1), "%)")) +
-    ggplot2::ylab(paste0("PC2 (", round(PC2_var, 1), "%)")) +
-    ggplot2::theme(panel.background = ggplot2::element_blank(), 
-                   plot.background = ggplot2::element_blank(), 
-                   panel.border = ggplot2::element_rect(colour = "black", fill = NA, 
-                                                        linewidth = 0.5))
-  if (is.null(testAnomaly)){
-    p <- p + ggplot2::geom_point(size = 3)
-    
-    if (ids){
-      p <- p + ggplot2::geom_label(data = features,
-                                   ggplot2::aes(label = index), 
-                                   nudge_x = 0.1, nudge_y = 0.1, 
-                                   label.padding = ggplot2::unit(0.2, "lines"), 
-                                   label.size = 0.25, # Add border of size 0.25
-                                   label.r = ggplot2::unit(0.1, "lines"), # Round corners slightly
-                                   fill = "white", 
-                                   color = "black")
-    }
+  if (is.null(flagSlot)){
+    # Don't color the dots if there are no labels and outliers to flag
+    p <- ggplot2::ggplot(features, ggplot2::aes(x = .data[["PC1"]],
+                                                y = .data[["PC2"]]))
   }
   else {
-    p <- p + ggplot2::geom_point(size = 3, ggplot2::aes(shape = category))
-    
-    if (ids){
-      p <- p + ggplot2::geom_label(data = subset(features, anomaly == TRUE),
-                                   ggplot2::aes(label = index), 
-                                   nudge_x = 0.1, nudge_y = 0.1, 
-                                   label.padding = ggplot2::unit(0.2, "lines"), 
-                                   label.size = 0.25, # Add border of size 0.25
-                                   label.r = ggplot2::unit(0.1, "lines"), # Round corners slightly
-                                   fill = "white", 
-                                   color = "black")
+    # Color the dots by either labels or flagged anomalies
+    if (plotLabels){
+      color <- "labels"
     }
+    else {
+      color <- "anomaly"
+    }
+    p <- ggplot2::ggplot(features, ggplot2::aes(x = .data[["PC1"]],
+                                                y = .data[["PC2"]],
+                                                colour = .data[[color]])) 
+  }
+
+  p <- p + ggplot2::xlab(paste0("PC1 (", round(PC1_var, 1), "%)")) +
+           ggplot2::ylab(paste0("PC2 (", round(PC2_var, 1), "%)")) +
+           ggplot2::theme(panel.background = ggplot2::element_blank(),
+                          plot.background = ggplot2::element_blank(),
+                          panel.border = ggplot2::element_rect(colour = "black", fill = NA,
+                                                              linewidth = 0.5))
+  if (plotRef) {
+    p <- p + ggplot2::geom_point(size = 3, ggplot2::aes(shape = category))
+  }
+  else {
+    p <- p + ggplot2::geom_point(size = 3)
   }
   
-  if (arrows){
-    p <- p + ggplot2::geom_segment(data = loadings, ggplot2::aes(x = 0, y = 0, xend = (PC1*loadScale), 
-                                                                 yend = (PC2*loadScale)),
-                                   arrow = ggplot2::arrow(length = ggplot2::unit(1/2, "picas")), 
-                                   color = "black") +
-      ggplot2::annotate("text", x = (loadings$PC1*loadScale), y = (loadings$PC2*loadScale),
-                        label = loadings$variable)
+  if (ids){
+    p <- p + ggplot2::geom_label(data = features,
+                                 ggplot2::aes(label = index),
+                                 nudge_x = 0.1, nudge_y = 0.1,
+                                 label.padding = ggplot2::unit(0.2, "lines"),
+                                 label.size = 0.25, # Add border of size 0.25
+                                 label.r = ggplot2::unit(0.1, "lines"), # Round corners slightly
+                                 fill = "white",
+                                 color = "black")
   }
   return(p)
 }
