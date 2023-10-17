@@ -98,37 +98,25 @@ FeatureGeneration <- function(CF, channels, featMethod = "summary", n = 1000,
   
   # Everything from here depends on aggregated data
   agg <- getAggregate(CF, aggSize = aggSize, aggSlot = aggSlot)
-
-  if (featMethod == "binning"){
-    if ("ref_data" %in% names(CF)){
-      CF$features$ref$binning <- Bin(CF, CF$ref_paths, agg, channels, n, cores)
-      CF$features$test$binning <- Bin(CF, CF$test_paths, agg, channels, n, cores)
-    }
-    else if ("test_data" %in% names(CF)){
-      CF$features$test$binning <- Bin(CF, CF$test_paths, agg, channels, n, cores)
-    }
-  }
   
-  if (featMethod == "EMD"){
-    if ("ref_data" %in% names(CF)){
-      CF$features$ref$EMD <- EMD(CF, CF$ref_paths, agg, channels, n, cores)
-      CF$features$test$EMD <- EMD(CF, CF$test_paths, agg, channels, n, cores)
-    }
-    else if ("test_data" %in% names(CF)){
-      CF$features$test$EMD <- EMD(CF, CF$test_paths, agg, channels, n, cores)
-    }
-  }
-  
-  if (featMethod == "fingerprint"){
-    if ("ref_data" %in% names(CF)){
-      CF$features$ref$fingerprint <- Fingerprint(CF, CF$ref_paths, agg, channels, 
-                                                 n, cores, nRecursions)
-      CF$features$test$fingerprint <- Fingerprint(CF, CF$test_paths, agg, channels, 
-                                                  n, cores, nRecursions)
-    }
-    else if ("test_data" %in% names(CF)){
-      CF$features$test$fingerprint <- Fingerprint(CF, CF$test_paths, agg, channels, 
-                                                  n, cores, nRecursions)
+  for (slot in c("ref", "test")){
+    if (paste0(slot, "_paths") %in% names(CF)){
+      if (!featMethod %in% names(CF$features[[slot]]) || recalculate == TRUE){
+        paths <- CF[[paste0(slot, "_paths")]]
+        if (featMethod == "binning"){
+          CF$features[[slot]][[featMethod]] <- Bin(CF, paths, agg, channels, n, 
+                                                   cores)
+        }
+        else if (featMethod == "EMD"){
+          CF$features[[slot]][[featMethod]] <- EMD(CF, paths, agg, channels, n, 
+                                                   cores)
+        }
+        else if (featMethod == "fingerprint"){
+          CF$features[[slot]][[featMethod]] <- Fingerprint(CF, paths, agg, 
+                                                           channels, n, cores, 
+                                                           nRecursions)
+        }
+      }
     }
   }
   return(CF)
