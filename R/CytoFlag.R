@@ -153,7 +153,7 @@ AddTestData <- function(CF, input, read = FALSE, reload = FALSE,
 #' Either one of: "summary", "EMD", "binning" or "fingerprint".
 #' @param flagStrat Which anomaly detection strategy to use ("outlier" or "novelty").
 #' By default, selects intended use based on availability of reference material.
-#' @param PCA Whether to reduce dimensionality to first two PCs. (default = TRUE)
+#' @param PCA Whether to reduce dimensionality to first two PCs. (default = FALSE)
 #'
 #' @return CytoFlag object
 #' 
