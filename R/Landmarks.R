@@ -1,4 +1,4 @@
-register_landmarks <- function(CF, channel, adjust = 1, 
+registerLandmarks <- function(CF, channel, adjust = 1, 
                                min_peak_height = 0.05,
                                min_peak_dist = 5,
                                plot = TRUE,
