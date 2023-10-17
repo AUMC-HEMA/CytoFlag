@@ -1,22 +1,7 @@
-registerLandmarks <- function(CF, channel, adjust = 1, 
-                               min_peak_height = 0.05,
-                               min_peak_dist = 5,
-                               plot = TRUE,
-                               save = TRUE){
-  if ("ref_data" %in% names(CF)){
-    agg <- as.matrix((dplyr::bind_rows(CF$ref_data)))
-  }
-  else if ("ref_paths" %in% names(CF)){
-    CF <- AddReferenceData(CF, CF$ref_paths, read = TRUE)
-    agg <- as.matrix((dplyr::bind_rows(CF$ref_data)))
-  }
-  else if ("test_data" %in% names(CF)){
-    agg <- as.matrix((dplyr::bind_rows(CF$test_data)))
-  }
-  else if ("test_paths" %in% names(CF)){
-    CF <- AddTestData(CF, CF$test_paths, read = TRUE)
-    agg <- as.matrix((dplyr::bind_rows(CF$test_data)))
-  }
+registerLandmarks <- function(CF, channel, aggSize = 10000, aggSlot = "auto",
+                              adjust = 1, min_peak_height = 0.05, 
+                              min_peak_dist = 5, plot = TRUE, save = TRUE){
+  agg <- getAggregate(CF, aggSize = aggSize, aggSlot = aggSlot)
   data <- as.matrix(agg)
   
   # Kernel density estimation
@@ -110,14 +95,14 @@ registerLandmarks <- function(CF, channel, adjust = 1,
     data <- do.call("rbind", kde_list)
     data$peak <- as.factor(data$peak)
     
-    p2 <- ggplot(data, aes(x, index, height = y, group = index, fill = peak)) +
-      geom_ridgeline_gradient(scale=5) +
-      theme_minimal() + 
-      theme(axis.text.y = element_blank(),
+    p2 <- ggplot2::ggplot(data, aes(x, index, height = y, group = index, fill = peak)) +
+      ggridges::geom_ridgeline_gradient(scale=5) +
+      ggplot2::theme_minimal() + 
+      ggplot2::theme(axis.text.y = element_blank(),
             axis.ticks.y = element_blank(),
             axis.title.y = element_blank()) +
-      labs(x = channel) +
-      ggtitle("Individual samples")
+      ggplot2::labs(x = channel) +
+      ggplot2::ggtitle("Individual samples")
     
     gridExtra::grid.arrange(p1, p2, ncol=2)
   }

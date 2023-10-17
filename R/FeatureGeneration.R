@@ -1,9 +1,43 @@
+getAggregate <- function(CF, aggSize, aggSlot = "auto"){
+  if (aggSlot == "auto"){
+    if ("ref_data" %in% names(CF)){
+      agg <- as.matrix((dplyr::bind_rows(CF$ref_data)))
+      # Perform extra sampling in case extra data has been added
+      set.seed(42)
+      agg <- agg[sample(1, nrow(agg), size = aggSize),]
+    }
+    else if ("ref_paths" %in% names(CF)){
+      CF <- AddReferenceData(CF, CF$ref_paths, read = TRUE, reload = TRUE, 
+                             aggSize = aggSize)
+      agg <- as.matrix((dplyr::bind_rows(CF$ref_data)))
+    }
+    else if ("test_data" %in% names(CF)){
+      agg <- as.matrix((dplyr::bind_rows(CF$test_data)))
+      set.seed(42)
+      agg <- agg[sample(1, nrow(agg), size = aggSize),]
+    }
+    else if ("test_paths" %in% names(CF)){
+      CF <- AddTestData(CF, CF$test_paths, read = TRUE, reload = TRUE, 
+                        aggSize = aggSize)
+      agg <- as.matrix((dplyr::bind_rows(CF$test_data)))
+    }
+  }
+  else {
+    agg <- as.matrix((dplyr::bind_rows(CF[[paste0(aggSlot, "_data")]])))
+    set.seed(42)
+    agg <- agg[sample(1, nrow(agg), size = aggSize),]
+  }
+  return(agg)
+}
+
+
 #' Generate features and attach to CytoFlag object
 #'
 #' @param CF CytoFlag object
 #' @param channels Channels to calculate features for
 #' @param featMethod Feature generation method to use
 #' @param n How many cells to use for feature generation
+#' @param aggSize How many cells to use in total for aggregate sample (default = 10000)
 #' @param aggSlot Whether to use reference or test data as aggregate (default = "auto")
 #' @param cores How many cores to use for parallelization (default = 50%)
 #' @param recalculate Whether to recalculate features for existing data
@@ -13,8 +47,8 @@
 #' 
 #' @export
 FeatureGeneration <- function(CF, channels, featMethod = "summary", n = 1000,
-                              aggSlot = "auto", cores = "auto", recalculate = FALSE, 
-                              nRecursions = 4){
+                              aggSize = 10000, aggSlot = "auto", cores = "auto", 
+                              recalculate = FALSE, nRecursions = 4){
   # Determine the number of cores to use
   if (cores == "auto"){
       cores = parallel::detectCores() / 2 
@@ -62,26 +96,8 @@ FeatureGeneration <- function(CF, channels, featMethod = "summary", n = 1000,
     return(CF)
   }
   
-  # Everything from here on depends on aggregated data
-  if (aggSlot == "auto"){
-    if ("ref_data" %in% names(CF)){
-      agg <- as.matrix((dplyr::bind_rows(CF$ref_data)))
-    }
-    else if ("ref_paths" %in% names(CF)){
-      CF <- AddReferenceData(CF, CF$ref_paths, read = TRUE, reload = TRUE, n = n)
-      agg <- as.matrix((dplyr::bind_rows(CF$ref_data)))
-    }
-    else if ("test_data" %in% names(CF)){
-      agg <- as.matrix((dplyr::bind_rows(CF$test_data)))
-    }
-    else if ("test_paths" %in% names(CF)){
-      CF <- AddTestData(CF, CF$test_paths, read = TRUE, reload = TRUE, n = n)
-      agg <- as.matrix((dplyr::bind_rows(CF$test_data)))
-    }
-  }
-  else {
-    agg <- as.matrix((dplyr::bind_rows(CF[[paste0(aggSlot, "_data")]])))
-  }
+  # Everything from here depends on aggregated data
+  agg <- getAggregate(CF, aggSize = aggSize, aggSlot = aggSlot)
 
   if (featMethod == "binning"){
     if ("ref_data" %in% names(CF)){

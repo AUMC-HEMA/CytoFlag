@@ -80,12 +80,13 @@ AddData <- function(CF, input, slot, n = 1000){
 #' @param input List of FCS file paths
 #' @param read Whether to read FCS files already (default = FALSE)
 #' @param reload Whether to read ALL fcs files, including previously loaded (default = FALSE)
-#' @param n Total number of cells to read per file (default = 1000)
+#' @param aggSize How many cells to use in total for aggregate sample (default = 10000)
 #'
 #' @return CytoFlag object
 #' 
 #' @export
-AddReferenceData <- function(CF, input, read = FALSE, reload = FALSE, n = 1000){
+AddReferenceData <- function(CF, input, read = FALSE, reload = FALSE,
+                             aggSize = 10000){
   # Check if the paths are already stored in the CytoFlag object
   if ("ref_paths" %in% names(CF) & !reload){
     for (path in input){
@@ -93,7 +94,7 @@ AddReferenceData <- function(CF, input, read = FALSE, reload = FALSE, n = 1000){
         message(paste("Concatenating additional file path", path))
         CF$ref_paths <- c(CF$ref_paths, path)
         if (read == TRUE){
-          CF <- AddData(CF, path, "ref_data", n)
+          CF <- AddData(CF, path, "ref_data", CF$nAgg)
         }
       }
     }
@@ -101,7 +102,8 @@ AddReferenceData <- function(CF, input, read = FALSE, reload = FALSE, n = 1000){
   else {
     CF$ref_paths <- input
     if (read == TRUE){
-      CF <- AddData(CF, input, "ref_data", n)
+      CF$nAgg <- aggSize / length(input)
+      CF <- AddData(CF, input, "ref_data", CF$nAgg)
     }
   }
   return(CF)
@@ -114,12 +116,13 @@ AddReferenceData <- function(CF, input, read = FALSE, reload = FALSE, n = 1000){
 #' @param input List of FCS file paths
 #' @param read Whether to read FCS files already (default = FALSE)
 #' @param reload Whether to read ALL fcs files, including previously loaded (default = FALSE)
-#' @param n Total number of cells to read per file (default = 1000)
+#' @param aggSize How many cells to use in total for aggregate sample (default = 10000)
 #'
 #' @return CytoFlag object
 #' 
 #' @export
-AddTestData <- function(CF, input, read = FALSE, reload = FALSE, n = 1000){
+AddTestData <- function(CF, input, read = FALSE, reload = FALSE,
+                        aggSize = 10000){
   # Check if the paths are already stored in the CytoFlag object
   if ("test_paths" %in% names(CF) & !reload){
     for (path in input){
@@ -127,7 +130,7 @@ AddTestData <- function(CF, input, read = FALSE, reload = FALSE, n = 1000){
         message(paste("Concatenating additional file path", path))
         CF$test_paths <- c(CF$test_paths, path)
         if (read == TRUE){
-          CF <- AddData(CF, path, "test_data", n)
+          CF <- AddData(CF, path, "test_data", CF$nAgg)
         }
       }
     }
@@ -135,7 +138,8 @@ AddTestData <- function(CF, input, read = FALSE, reload = FALSE, n = 1000){
   else {
     CF$test_paths <- input
     if (read == TRUE){
-      CF <- AddData(CF, input, "test_data", n)
+      CF$nAgg <- aggSize / length(input)
+      CF <- AddData(CF, input, "test_data", CF$nAgg)
     }
   }
   return(CF)
