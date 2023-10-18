@@ -206,32 +206,28 @@ Flag <- function(CF, featMethod = NULL, flagStrat = "outlier",
   }
   
   if (flagStrat == "novelty"){
-    message("Estimating reference density using KDE")
     # Based on: https://bookdown.org/egarpor/NP-UC3M/kde-ii-mult.html
     ref_scores <- ks::kde(x = refFeatures, eval.points = refFeatures)$estimate
-    message("Calculating test density using reference KDE")
     test_scores <- ks::kde(x = refFeatures, eval.points = testFeatures)$estimate
     threshold <- stats::quantile(ref_scores, 0.05)
-    message("Predicting novelties using probability cut-off")
     novelties <- as.factor(ifelse(test_scores < threshold, TRUE, FALSE))
-    n <- length(novelties[novelties == TRUE])
-    perc <- (n / length(novelties)) * 100
-    fmt_str <- sprintf("Found %d novelties (%.1f%%)", n, perc)
-    message(fmt_str)
+    # n <- length(novelties[novelties == TRUE])
+    # perc <- (n / length(novelties)) * 100
+    # fmt_str <- sprintf("Found %d novelties (%.1f%%)", n, perc)
+    # message(fmt_str)
     CF$novelties[[featMethod]] <- novelties
   }
   
   if (flagStrat == "outlier"){
-    message("Building isolation forest")
     forest <- isotree::isolation.forest(testFeatures, seed = 42)
     scores <- stats::predict(forest, testFeatures)
     # Scores above 0.5 are most likely outliers according to the original paper
     # This also the default behavior in the sklearn implementation
     outliers <- as.factor(ifelse(scores >= 0.5, TRUE, FALSE))
-    n <- length(outliers[outliers == TRUE])
-    perc <- (n / length(outliers)) * 100
-    fmt_str <- sprintf("Found %d outliers (%.1f%%)", n, perc)
-    message(fmt_str)
+    # n <- length(outliers[outliers == TRUE])
+    # perc <- (n / length(outliers)) * 100
+    # fmt_str <- sprintf("Found %d outliers (%.1f%%)", n, perc)
+    # message(fmt_str)
     CF$outliers[[featMethod]] <- outliers
   }
   return(CF)

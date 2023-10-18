@@ -270,7 +270,6 @@ calculateFingerprint <- function(CF, path, model, channels, n){
 Fingerprint <- function(CF, input, agg, channels, n, cores, nRecursions = 4){
   # Convert aggregated matrix to flowframe
   agg <- flowCore::flowFrame(agg[,channels])
-  message("Fitting flowFP fingerprinting model")
   model <- flowFP::flowFPModel(agg, parameters = channels, 
                                nRecursions = nRecursions)
   if (cores > 1){
@@ -317,7 +316,6 @@ calculateBins <- function(CF, path, bin_boundaries, channels, n){
 
 Bin <- function(CF, input, agg, channels, n, cores){
   # Determine the bins on the aggregated data
-  message("Determining bin boundaries on aggregated data")
   bin_boundaries <- apply(agg[,channels], 2, 
                           function(x) stats::quantile(x, probs = seq(0, 1, by = 0.1)))
   bin_boundaries <- data.frame(bin_boundaries)
