@@ -102,7 +102,8 @@ AddReferenceData <- function(CF, input, read = FALSE, reload = FALSE,
   else {
     CF$ref_paths <- input
     if (read == TRUE){
-      CF$nAgg <- aggSize / length(input)
+      CF$aggSize <- aggSize
+      CF$nAgg <- round(aggSize / length(input))
       CF <- AddData(CF, input, "ref_data", CF$nAgg)
     }
   }
@@ -138,7 +139,8 @@ AddTestData <- function(CF, input, read = FALSE, reload = FALSE,
   else {
     CF$test_paths <- input
     if (read == TRUE){
-      CF$nAgg <- aggSize / length(input)
+      CF$aggSize <- aggSize
+      CF$nAgg <- round(aggSize / length(input))
       CF <- AddData(CF, input, "test_data", CF$nAgg)
     }
   }

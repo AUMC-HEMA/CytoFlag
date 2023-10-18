@@ -4,7 +4,7 @@ getAggregate <- function(CF, aggSize, aggSlot = "auto"){
       agg <- as.matrix((dplyr::bind_rows(CF$ref_data)))
       # Perform extra sampling in case extra data has been added
       set.seed(42)
-      agg <- agg[sample(seq(1, nrow(agg), aggSize)),]
+      agg <- agg[sample(c(1:nrow(agg), aggSize)),]
     }
     else if ("ref_paths" %in% names(CF)){
       CF <- AddReferenceData(CF, CF$ref_paths, read = TRUE, reload = TRUE, 
@@ -14,7 +14,7 @@ getAggregate <- function(CF, aggSize, aggSlot = "auto"){
     else if ("test_data" %in% names(CF)){
       agg <- as.matrix((dplyr::bind_rows(CF$test_data)))
       set.seed(42)
-      agg <- agg[sample(seq(1, nrow(agg), aggSize)),]
+      agg <- agg[sample(c(1:nrow(agg), aggSize)),]
     }
     else if ("test_paths" %in% names(CF)){
       CF <- AddTestData(CF, CF$test_paths, read = TRUE, reload = TRUE, 
@@ -25,7 +25,7 @@ getAggregate <- function(CF, aggSize, aggSlot = "auto"){
   else {
     agg <- as.matrix((dplyr::bind_rows(CF[[paste0(aggSlot, "_data")]])))
     set.seed(42)
-    agg <- agg[sample(seq(1, nrow(agg), aggSize)),]
+    agg <- agg[sample(c(1:nrow(agg), aggSize)),]
   }
   return(agg)
 }
@@ -98,7 +98,7 @@ FeatureGeneration <- function(CF, channels, featMethod = "summary", n = 1000,
   
   # Everything from here depends on aggregated data
   agg <- getAggregate(CF, aggSize = aggSize, aggSlot = aggSlot)
-  
+
   for (slot in c("ref", "test")){
     if (paste0(slot, "_paths") %in% names(CF)){
       if (!featMethod %in% names(CF$features[[slot]]) || recalculate == TRUE){
