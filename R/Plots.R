@@ -96,9 +96,9 @@ PlotHeatmap <- function(CF, featMethod, plotRef = FALSE,
   
   # Plot
   p <- ComplexHeatmap::pheatmap(mat[,featNames], cluster_cols = FALSE,
-                                color = grDevices::colorRampPalette(rev(c("red", "white", "blue")))(100), 
+                                cluster_rows = TRUE,
+                                # color = grDevices::colorRampPalette(rev(c("red", "white", "blue")))(100), 
                                 show_rownames = TRUE, show_colnames = TRUE, 
-                                scale = "column",
                                 annotation_row = annot_data,
                                 annotation_colors = annot_colors)
   return(p)
@@ -169,18 +169,16 @@ PlotPCA <- function(CF, featMethod, plotRef = FALSE,
     p <- ggplot2::ggplot(features, ggplot2::aes(x = .data[["PC1"]],
                                                 y = .data[["PC2"]]))
   }
-  else {
-    # Color the dots by either labels or flagged anomalies
-    if (plotLabels){
-      color <- "labels"
-    }
-    else {
-      color <- "anomaly"
-    }
-    p <- ggplot2::ggplot(features, ggplot2::aes(x = .data[["PC1"]],
-                                                y = .data[["PC2"]],
-                                                colour = .data[[color]])) 
+  # Color the dots by either labels or flagged anomalies
+  if (plotLabels){
+    color <- "labels"
   }
+  else {
+    color <- "anomaly"
+  }
+  p <- ggplot2::ggplot(features, ggplot2::aes(x = .data[["PC1"]],
+                                              y = .data[["PC2"]],
+                                              colour = .data[[color]])) 
 
   p <- p + ggplot2::xlab(paste0("PC1 (", round(PC1_var, 1), "%)")) +
            ggplot2::ylab(paste0("PC2 (", round(PC2_var, 1), "%)")) +
