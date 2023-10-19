@@ -56,12 +56,15 @@ FeatureGeneration <- function(CF, channels, featMethod = "summary", n = 1000,
   }
   
   # Summary statistics and landmarks can be generated for individual files
-  if (featMethod %in% c("summary", "landmarks")){
+  if (featMethod %in% c("summary", "landmarks", "quantiles")){
     if (featMethod == "summary"){
       func <- SummaryStats
     }
-    else {
+    if (featMethod == "landmarks"){
       func <- LandmarkStats
+    }
+    if (featMethod == "quantiles"){
+      func <- Quantiles
     }
     # Generate features for the ref and test paths slots (if in CF object)
     for (slot in c("ref", "test")){
@@ -120,6 +123,51 @@ FeatureGeneration <- function(CF, channels, featMethod = "summary", n = 1000,
     }
   }
   return(CF)
+}
+
+
+calculateQuantiles <- function(CF, path, channels, n){
+  ff <- ReadInput(CF, path, n)
+  df <- data.frame(ff@exprs[,channels], check.names = FALSE)
+  stats <- list()
+  # Calculate quantiles for every variable
+  percentiles <- lapply(df, function(col) quantile(col,
+                                                   probs = seq(0.1, 0.9, 0.1)))
+  stats <- list()
+  for (i in names(percentiles)){
+    for (j in names(percentiles[[i]])){
+      stats[[paste0(i, "_", j)]] <- percentiles[[i]][[j]]
+    }
+  }
+  stats <- data.frame(stats, check.names=FALSE)
+  return(stats)
+}
+
+
+Quantiles <- function(CF, input, channels, n, cores){
+  if (cores > 1){
+    cl <- parallel::makeCluster(cores)
+    doParallel::registerDoParallel(cl)
+    parallel::clusterExport(cl, c(CF[["parallel_vars"]], "calculateQuantiles"))
+    `%dopar%` <- foreach::`%dopar%`
+    all_stats <- foreach::foreach(path = input, .combine = "c", 
+                                  .packages = CF[["parallel_packages"]]) %dopar% {
+                                    stats <- list(calculateQuantiles(CF, path, channels, n))
+                                    names(stats) <- path
+                                    return(stats)
+                                  }
+    parallel::stopCluster(cl)
+  }
+  else {
+    all_stats <- list()
+    for (path in input){
+      stats <- calculateQuantiles(CF, path, channels, n)
+      all_stats[[path]] <- stats
+    }
+  }
+  stats <- data.frame(dplyr::bind_rows(all_stats), check.names = FALSE)
+  rownames(stats) <- names(all_stats)
+  return(stats)
 }
 
 
