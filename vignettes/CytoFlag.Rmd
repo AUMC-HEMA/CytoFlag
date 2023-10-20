@@ -34,7 +34,7 @@ The CytoFlag workflow takes file paths of .fcs files as input.
 The first step is always to initialize a CytoFlag object. This object stores all 
 relevant information, from file paths to generated features and outputs.
 
-```{}
+```{r}
 CF <- CytoFlag()
 ```
 
@@ -48,7 +48,7 @@ on the full dataset.
 
 ```{r, eval=FALSE}
 CF <- CytoFlag()
-CF <- AddTestData(CF, files) 
+CF <- addTestdata(CF, files) 
 ```
 
 If you want to use CytoFlag for novelty, you have to define reference data as
@@ -57,8 +57,8 @@ novelties in the test data.
 
 ```{r, eval=FALSE}
 CF <- CytoFlag()
-CF <- AddTestData(CF, test_files) 
-CF <- AddReferenceData(CF, ref_files) 
+CF <- addTestdata(CF, test_files) 
+CF <- addReferencedata(CF, ref_files) 
 ```
 
 ### Adding additional cytometry data
@@ -76,10 +76,10 @@ you have to add these to the CytoFlag object as follows:
 
 ```{r, eval=FALSE}
 # For test data
-CF <- AddTestLabels(CF, test_labels)
+CF <- addTestlabels(CF, test_labels)
 
 # For reference data
-CF <- AddReferenceLabels(CF, ref_labels)
+CF <- addReferencelabels(CF, ref_labels)
 ```
 
 ### Custom pre-processing
@@ -135,19 +135,19 @@ aggregation.
 
 ```{r, eval=FALSE}
 CF <- CytoFlag() 
-CF <- AddTestData(CF, files)
+CF <- addTestdata(CF, files)
 channels <- c("channelA", "channelB", "channelC")
-CF <- FeatureGeneration(CF, channels = channels, featMethod = "summary")
+CF <- generateFeatures(CF, channels = channels, featMethod = "summary")
 ```
 
 ### Generating features for novelty detection
 
 ```{r, eval=FALSE}
 CF <- CytoFlag() 
-CF <- AddTestData(CF, test_files) 
-CF <- AddReferenceData(CF, ref_files) 
+CF <- addTestdata(CF, test_files) 
+CF <- addReferencedata(CF, ref_files) 
 channels <- c("channelA", "channelB", "channelC")
-CF <- FeatureGeneration(CF, channels = channels, featMethod = "summary")
+CF <- generateFeatures(CF, channels = channels, featMethod = "summary")
 ```
 
 
@@ -161,9 +161,9 @@ defaults to novelty detection.
 
 ```{r, eval=FALSE}
 CF <- CytoFlag() 
-CF <- AddTestData(CF, files)
+CF <- addTestdata(CF, files)
 channels <- c("channelA", "channelB", "channelC")
-CF <- FeatureGeneration(CF, channels = channels, featMethod = "summary")
+CF <- generateFeatures(CF, channels = channels, featMethod = "summary")
 CF <- Flag(CF, flagStrat = "outlier")
 ```
 
@@ -171,10 +171,10 @@ CF <- Flag(CF, flagStrat = "outlier")
 
 ```{r, eval=FALSE}
 CF <- CytoFlag() 
-CF <- AddTestData(CF, test_files) 
-CF <- AddReferenceData(CF, ref_files) 
+CF <- addTestdata(CF, test_files) 
+CF <- addReferencedata(CF, ref_files) 
 channels <- c("channelA", "channelB", "channelC")
-CF <- FeatureGeneration(CF, channels = channels, featMethod = "summary")
+CF <- generateFeatures(CF, channels = channels, featMethod = "summary")
 CF <- Flag(CF, flagStrat = "novelty")
 ```
 
