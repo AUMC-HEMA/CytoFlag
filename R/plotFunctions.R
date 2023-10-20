@@ -1,5 +1,5 @@
 #' @export
-PrepareFeaturePlot <- function(CF, featMethod, plotRef, flagSlot){
+prepareFeatureplot <- function(CF, featMethod, plotRef, flagSlot){
   testFeatures <- CF$features$test[[featMethod]]
   refFeatures <- NULL
   testAnomaly <- NULL
@@ -41,9 +41,9 @@ PrepareFeaturePlot <- function(CF, featMethod, plotRef, flagSlot){
 #'
 #' @return Heatmap plot
 #' @export
-PlotHeatmap <- function(CF, featMethod, plotRef = FALSE, 
+plotHeatmap <- function(CF, featMethod, plotRef = FALSE, 
                         flagSlot = NULL, plotLabels = FALSE){
-  features <- PrepareFeaturePlot(CF, featMethod, plotRef, flagSlot)
+  features <- prepareFeatureplot(CF, featMethod, plotRef, flagSlot)
   testFeatures <- features$testFeatures
   featNames <- colnames(testFeatures)
   refFeatures <- features$refFeatures
@@ -118,9 +118,9 @@ PlotHeatmap <- function(CF, featMethod, plotRef = FALSE,
 #'
 #' @return PCA plot
 #' @export
-PlotPCA <- function(CF, featMethod, plotRef = FALSE,
+plotPCA <- function(CF, featMethod, plotRef = FALSE,
                     flagSlot = NULL, ids = FALSE, plotLabels = FALSE){
-  features <- PrepareFeaturePlot(CF, featMethod, plotRef, flagSlot)
+  features <- prepareFeatureplot(CF, featMethod, plotRef, flagSlot)
   testFeatures <- features$testFeatures
   featNames <- colnames(testFeatures)
   refFeatures <- features$refFeatures
@@ -211,7 +211,7 @@ PlotPCA <- function(CF, featMethod, plotRef = FALSE,
 
 
 #' @export
-PlotAnomaly <- function(CF, file, channel, n = 500, includeRef = "auto"){
+plotAnomaly <- function(CF, file, channel, n = 500, includeRef = "auto"){
   # Read the anomalous data
   ff_anom <- readInput(CF, file, n = n)
   df_anom <- data.frame(ff_anom@exprs, check.names=FALSE)
