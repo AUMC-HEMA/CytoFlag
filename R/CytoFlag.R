@@ -6,7 +6,7 @@
 #' 
 #' @export
 CytoFlag <- function(){
-  CF <- list(list())
+  CF <- list()
   class(CF) <- "CytoFlag"
   CF[["preprocessFunction"]] <- processInput
   CF[["parallel"]] <- list("parallelVars" = c("channels", "CF", "readInput"),
@@ -33,7 +33,7 @@ addReferencelabels <- function(CF, labels){
 }
 
 #' @export
-processInput <- function(ff, channels){
+processInput <- function(ff){
   ff <- PeacoQC::RemoveMargins(ff, channels)
   ff <- flowCore::compensate(ff, ff@description$SPILL)
   ff <- flowCore::transform(ff, flowCore::transformList(colnames(ff@description$SPILL), 
@@ -53,7 +53,7 @@ processInput <- function(ff, channels){
 readInput <- function(CF, path, n = NULL){
   set.seed(42)
   ff <- flowCore::read.FCS(path, which.lines = n)
-  ff <- CF[["preprocess_function"]](ff)
+  ff <- CF[["preprocessFunction"]](ff)
   return(ff)
 }
 
