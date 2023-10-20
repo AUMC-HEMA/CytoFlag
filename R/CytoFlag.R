@@ -8,32 +8,32 @@
 CytoFlag <- function(){
   CF <- list(list())
   class(CF) <- "CytoFlag"
-  CF[["preprocess_function"]] <- ProcessInput
-  CF[["parallel_vars"]] <- c("channels", "CF", "ReadInput")
+  CF[["preprocess_function"]] <- processInput
+  CF[["parallel_vars"]] <- c("channels", "CF", "readInput")
   CF[["parallel_packages"]] <- c("flowCore", "PeacoQC")
   return(CF)
 }
 
-
-AddLabels <- function(CF, labels, slot){
+#' @export
+addLabels <- function(CF, labels, slot){
   CF[["labels"]][[slot]] <- labels
   return(CF)
 }
  
-
-AddTestLabels <- function(CF, labels){
-  CF <- AddLabels(CF, labels, "test")
+#' @export
+addTestlabels <- function(CF, labels){
+  CF <- addLabels(CF, labels, "test")
   return(CF)
 }
 
-
-AddReferenceLabels <- function(CF, labels){
-  CF <- AddLabels(labels, "ref")
+#' @export
+addReferencelabels <- function(CF, labels){
+  CF <- addLabels(labels, "ref")
   return(CF)
 }
 
-
-ProcessInput <- function(ff, channels){
+#' @export
+processInput <- function(ff, channels){
   ff <- PeacoQC::RemoveMargins(ff, channels)
   ff <- flowCore::compensate(ff, ff@description$SPILL)
   ff <- flowCore::transform(ff, flowCore::transformList(colnames(ff@description$SPILL), 
@@ -49,7 +49,8 @@ ProcessInput <- function(ff, channels){
 #' @param n Total number of cells to read per file
 #'
 #' @return flowFrame
-ReadInput <- function(CF, path, n = NULL){
+#' @export
+readInput <- function(CF, path, n = NULL){
   set.seed(42)
   ff <- flowCore::read.FCS(path, which.lines = n)
   ff <- CF[["preprocess_function"]](ff)
@@ -65,9 +66,10 @@ ReadInput <- function(CF, path, n = NULL){
 #' @param n Total number of cells to read per file (default = 1000)
 #'
 #' @return CytoFlag object
-AddData <- function(CF, input, slot, n = 1000){
+#' @export
+addData <- function(CF, input, slot, n = 1000){
   for (path in input){
-    ff <- ReadInput(CF, path, n)
+    ff <- readInput(CF, path, n)
     CF[[slot]][[path]] <- data.frame(ff@exprs, check.names = FALSE)
   }
   return(CF)
@@ -85,7 +87,7 @@ AddData <- function(CF, input, slot, n = 1000){
 #' @return CytoFlag object
 #' 
 #' @export
-AddReferenceData <- function(CF, input, read = FALSE, reload = FALSE,
+addReferencedata <- function(CF, input, read = FALSE, reload = FALSE,
                              aggSize = 10000){
   # Check if the paths are already stored in the CytoFlag object
   if ("ref_paths" %in% names(CF) & !reload){
@@ -94,7 +96,7 @@ AddReferenceData <- function(CF, input, read = FALSE, reload = FALSE,
         message(paste("Concatenating additional file path", path))
         CF$ref_paths <- c(CF$ref_paths, path)
         if (read == TRUE){
-          CF <- AddData(CF, path, "ref_data", CF$nAgg)
+          CF <- addData(CF, path, "ref_data", CF$nAgg)
         }
       }
     }
@@ -104,7 +106,7 @@ AddReferenceData <- function(CF, input, read = FALSE, reload = FALSE,
     if (read == TRUE){
       CF$aggSize <- aggSize
       CF$nAgg <- round(aggSize / length(input))
-      CF <- AddData(CF, input, "ref_data", CF$nAgg)
+      CF <- addData(CF, input, "ref_data", CF$nAgg)
     }
   }
   return(CF)
@@ -122,7 +124,7 @@ AddReferenceData <- function(CF, input, read = FALSE, reload = FALSE,
 #' @return CytoFlag object
 #' 
 #' @export
-AddTestData <- function(CF, input, read = FALSE, reload = FALSE,
+addTestdata <- function(CF, input, read = FALSE, reload = FALSE,
                         aggSize = 10000){
   # Check if the paths are already stored in the CytoFlag object
   if ("test_paths" %in% names(CF) & !reload){
@@ -131,7 +133,7 @@ AddTestData <- function(CF, input, read = FALSE, reload = FALSE,
         message(paste("Concatenating additional file path", path))
         CF$test_paths <- c(CF$test_paths, path)
         if (read == TRUE){
-          CF <- AddData(CF, path, "test_data", CF$nAgg)
+          CF <- addData(CF, path, "test_data", CF$nAgg)
         }
       }
     }
@@ -141,7 +143,7 @@ AddTestData <- function(CF, input, read = FALSE, reload = FALSE,
     if (read == TRUE){
       CF$aggSize <- aggSize
       CF$nAgg <- round(aggSize / length(input))
-      CF <- AddData(CF, input, "test_data", CF$nAgg)
+      CF <- addData(CF, input, "test_data", CF$nAgg)
     }
   }
   return(CF)

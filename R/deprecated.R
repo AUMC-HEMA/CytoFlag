@@ -69,7 +69,7 @@ registerLandmarks <- function(CF, channel, aggSize = 10000, aggSlot = "auto",
     for (i in sample(seq(1, length(CF$test_paths)), 20)){
       cnt <- cnt + 1
       # Read input
-      ff <- ReadInput(CF, CF$test_paths[[i]], n=1000)
+      ff <- readInput(CF, CF$test_paths[[i]], n=1000)
       df <- data.frame(ff@exprs, check.names=FALSE)
       df <- df[df[,channel] > stats::quantile(df[,channel], 0.001) & df[,channel] < stats::quantile(df[,channel], 0.999), ]
       
@@ -107,4 +107,58 @@ registerLandmarks <- function(CF, channel, aggSize = 10000, aggSlot = "auto",
     gridExtra::grid.arrange(p1, p2, ncol=2)
   }
   return(CF)
+}
+
+
+calculateLandmarks <- function(CF, path, channels, n){
+  ff <- readInput(CF, path, n = n)
+  df <- data.frame(ff@exprs[,channels], check.names = FALSE)
+  stats <- list()
+  for (channel in channels){
+    agg_peaks <- CF$landmarks$ref[[channel]]$landmarks
+    for (i in seq(1, nrow(agg_peaks))){
+      # Sample all the values in the expression range
+      min <- agg_peaks[i, "exprs_start"]
+      max <- agg_peaks[i, "exprs_end"]
+      peak_exprs <- df[df[,channel] > min & df[,channel] < max, ]
+      if (is.null(peak_exprs)){
+        print("too little cells")
+        stats[paste0(channel, "_peak", i, "_median")] <- NA
+      }
+      else if (nrow(peak_exprs) < 20){
+        stats[paste0(channel, "_peak", i, "_median")] <- NA
+      }
+      else {
+        stats[paste0(channel, "_peak", i, "_median")] <- stats::median(peak_exprs[,channel])
+      }
+    }
+  }
+  return(stats)
+}
+
+
+LandmarkStats <- function(CF, input, channels, n, cores){
+  if (cores > 1){
+    cl <- parallel::makeCluster(cores)
+    doParallel::registerDoParallel(cl)
+    parallel::clusterExport(cl, c(CF[["parallel_vars"]], "calculateLandmarks"))
+    `%dopar%` <- foreach::`%dopar%`
+    all_stats <- foreach::foreach(path = input, .combine = "c", 
+                                  .packages = CF[["parallel_packages"]]) %dopar% {
+                                  stats <- list(calculateLandmarks(CF, path, channels, n))
+                                  names(stats) <- path
+                                  return(stats)
+                                  }
+    parallel::stopCluster(cl)
+  } else {
+    all_stats <- list()
+    for (path in input){
+      all_stats[[path]] <- calculateLandmarks(CF, path, channels, n)
+    }
+  }
+  stats <- data.frame(dplyr::bind_rows(all_stats), check.names = FALSE)
+  # Impute missing values
+  stats <- VIM::kNN(stats, k = 1, imp_var	= FALSE)
+  rownames(stats) <- names(all_stats)
+  return(stats)
 }

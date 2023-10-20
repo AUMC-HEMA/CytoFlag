@@ -1,3 +1,4 @@
+#' @export
 PrepareFeaturePlot <- function(CF, featMethod, plotRef, flagSlot){
   testFeatures <- CF$features$test[[featMethod]]
   refFeatures <- NULL
@@ -39,6 +40,7 @@ PrepareFeaturePlot <- function(CF, featMethod, plotRef, flagSlot){
 #' @param plotLabels Whether to plot supplied labels
 #'
 #' @return Heatmap plot
+#' @export
 PlotHeatmap <- function(CF, featMethod, plotRef = FALSE, 
                         flagSlot = NULL, plotLabels = FALSE){
   features <- PrepareFeaturePlot(CF, featMethod, plotRef, flagSlot)
@@ -115,6 +117,7 @@ PlotHeatmap <- function(CF, featMethod, plotRef = FALSE,
 #' @param plotLabels Whether to plot supplied labels, overrides flagSlot
 #'
 #' @return PCA plot
+#' @export
 PlotPCA <- function(CF, featMethod, plotRef = FALSE,
                     flagSlot = NULL, ids = FALSE, plotLabels = FALSE){
   features <- PrepareFeaturePlot(CF, featMethod, plotRef, flagSlot)
@@ -207,9 +210,10 @@ PlotPCA <- function(CF, featMethod, plotRef = FALSE,
 }
 
 
+#' @export
 PlotAnomaly <- function(CF, file, channel, n = 500, includeRef = "auto"){
   # Read the anomalous data
-  ff_anom <- ReadInput(CF, file, n = n)
+  ff_anom <- readInput(CF, file, n = n)
   df_anom <- data.frame(ff_anom@exprs, check.names=FALSE)
   df_anom$index <- file
   df_anom$category <- "Outlier"
@@ -232,7 +236,7 @@ PlotAnomaly <- function(CF, file, channel, n = 500, includeRef = "auto"){
   
   test_data <- list()
   for (test_file in test_files){
-    ff <- ReadInput(CF, test_file, n  = n)
+    ff <- readInput(CF, test_file, n  = n)
     df <- data.frame(ff@exprs, check.names=FALSE)
     df$index <- as.character(test_file)
     df$category <- background_label

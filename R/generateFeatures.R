@@ -1,3 +1,4 @@
+#' @export
 getAggregate <- function(CF, aggSize, aggSlot = "auto"){
   if (aggSlot == "auto"){
     if ("ref_data" %in% names(CF)){
@@ -7,7 +8,7 @@ getAggregate <- function(CF, aggSize, aggSlot = "auto"){
       agg <- agg[sample(c(1:nrow(agg), aggSize)),]
     }
     else if ("ref_paths" %in% names(CF)){
-      CF <- AddReferenceData(CF, CF$ref_paths, read = TRUE, reload = TRUE, 
+      CF <- addReferencedata(CF, CF$ref_paths, read = TRUE, reload = TRUE, 
                              aggSize = aggSize)
       agg <- as.matrix((dplyr::bind_rows(CF$ref_data)))
     }
@@ -17,7 +18,7 @@ getAggregate <- function(CF, aggSize, aggSlot = "auto"){
       agg <- agg[sample(c(1:nrow(agg), aggSize)),]
     }
     else if ("test_paths" %in% names(CF)){
-      CF <- AddTestData(CF, CF$test_paths, read = TRUE, reload = TRUE, 
+      CF <- addTestdata(CF, CF$test_paths, read = TRUE, reload = TRUE, 
                         aggSize = aggSize)
       agg <- as.matrix((dplyr::bind_rows(CF$test_data)))
     }
@@ -46,7 +47,7 @@ getAggregate <- function(CF, aggSize, aggSlot = "auto"){
 #' @return Dataframe with features (columns) for samples (rows)
 #' 
 #' @export
-FeatureGeneration <- function(CF, channels, featMethod = "summary", n = 1000,
+generateFeatures <- function(CF, channels, featMethod = "summary", n = 1000,
                               aggSize = 10000, aggSlot = "auto", cores = "auto", 
                               recalculate = FALSE, nRecursions = 4){
   # Determine the number of cores to use
@@ -58,7 +59,7 @@ FeatureGeneration <- function(CF, channels, featMethod = "summary", n = 1000,
   # Summary statistics and landmarks can be generated for individual files
   if (featMethod %in% c("summary", "landmarks", "quantiles")){
     if (featMethod == "summary"){
-      func <- SummaryStats
+      func <- summaryStats
     }
     if (featMethod == "landmarks"){
       func <- LandmarkStats
@@ -125,9 +126,9 @@ FeatureGeneration <- function(CF, channels, featMethod = "summary", n = 1000,
   return(CF)
 }
 
-
+#' @export
 calculateQuantiles <- function(CF, path, channels, n){
-  ff <- ReadInput(CF, path, n)
+  ff <- readInput(CF, path, n)
   df <- data.frame(ff@exprs[,channels], check.names = FALSE)
   stats <- list()
   # Calculate quantiles for every variable
@@ -143,7 +144,7 @@ calculateQuantiles <- function(CF, path, channels, n){
   return(stats)
 }
 
-
+#' @export
 Quantiles <- function(CF, input, channels, n, cores){
   if (cores > 1){
     cl <- parallel::makeCluster(cores)
@@ -170,9 +171,9 @@ Quantiles <- function(CF, input, channels, n, cores){
   return(stats)
 }
 
-
+#' @export
 calculateSummary <- function(CF, path, channels, n){
-  ff <- ReadInput(CF, path, n)
+  ff <- readInput(CF, path, n)
   stats <- list()
   for (channel in channels){
     stats[paste0(channel,"_mean")] <- base::mean(ff@exprs[,channel])
@@ -183,8 +184,8 @@ calculateSummary <- function(CF, path, channels, n){
   return(stats)
 }
 
-
-SummaryStats <- function(CF, input, channels, n, cores){
+#' @export
+summaryStats <- function(CF, input, channels, n, cores){
   if (cores > 1){
     cl <- parallel::makeCluster(cores)
     doParallel::registerDoParallel(cl)
@@ -211,62 +212,9 @@ SummaryStats <- function(CF, input, channels, n, cores){
 }
 
 
-calculateLandmarks <- function(CF, path, channels, n){
-  ff <- ReadInput(CF, path, n = n)
-  df <- data.frame(ff@exprs[,channels], check.names = FALSE)
-  stats <- list()
-  for (channel in channels){
-    agg_peaks <- CF$landmarks$ref[[channel]]$landmarks
-    for (i in seq(1, nrow(agg_peaks))){
-      # Sample all the values in the expression range
-      min <- agg_peaks[i, "exprs_start"]
-      max <- agg_peaks[i, "exprs_end"]
-      peak_exprs <- df[df[,channel] > min & df[,channel] < max, ]
-      if (is.null(peak_exprs)){
-        print("too little cells")
-        stats[paste0(channel, "_peak", i, "_median")] <- NA
-      }
-      else if (nrow(peak_exprs) < 20){
-        stats[paste0(channel, "_peak", i, "_median")] <- NA
-      }
-      else {
-        stats[paste0(channel, "_peak", i, "_median")] <- stats::median(peak_exprs[,channel])
-      }
-    }
-  }
-  return(stats)
-}
-
-
-LandmarkStats <- function(CF, input, channels, n, cores){
-  if (cores > 1){
-    cl <- parallel::makeCluster(cores)
-    doParallel::registerDoParallel(cl)
-    parallel::clusterExport(cl, c(CF[["parallel_vars"]], "calculateLandmarks"))
-    `%dopar%` <- foreach::`%dopar%`
-    all_stats <- foreach::foreach(path = input, .combine = "c", 
-                                  .packages = CF[["parallel_packages"]]) %dopar% {
-                                  stats <- list(calculateLandmarks(CF, path, channels, n))
-                                  names(stats) <- path
-                                  return(stats)
-                                  }
-    parallel::stopCluster(cl)
-  } else {
-    all_stats <- list()
-    for (path in input){
-      all_stats[[path]] <- calculateLandmarks(CF, path, channels, n)
-    }
-  }
-  stats <- data.frame(dplyr::bind_rows(all_stats), check.names = FALSE)
-  # Impute missing values
-  stats <- VIM::kNN(stats, k = 1, imp_var	= FALSE)
-  rownames(stats) <- names(all_stats)
-  return(stats)
-}
-
-
+#' @export
 calculateEMD <- function(CF, path, agg, channels, n){
-  ff <- ReadInput(CF, path, n = n)
+  ff <- readInput(CF, path, n = n)
   stats <- list()
   for (channel in channels){
     stats[paste0(channel,'_', 'EMD')] <- transport::wasserstein1d(ff@exprs[, channel], 
@@ -276,6 +224,7 @@ calculateEMD <- function(CF, path, agg, channels, n){
 }
 
 
+#' @export
 EMD <- function(CF, input, agg, channels, n, cores){
   agg <- agg
   if (cores > 1){
@@ -304,8 +253,9 @@ EMD <- function(CF, input, agg, channels, n, cores){
 }
 
 
+#' @export
 calculateFingerprint <- function(CF, path, model, channels, n){
-  ff <- ReadInput(CF, path, n = n)
+  ff <- readInput(CF, path, n = n)
   call = flowFP::flowFP(ff[, channels], model)
   bin_counts = flowFP::counts(call)
   # Convert counts to bin frequencies
@@ -315,6 +265,7 @@ calculateFingerprint <- function(CF, path, model, channels, n){
 }
 
 
+#' @export
 Fingerprint <- function(CF, input, agg, channels, n, cores, nRecursions = 4){
   # Convert aggregated matrix to flowframe
   agg <- flowCore::flowFrame(agg[,channels])
@@ -345,8 +296,9 @@ Fingerprint <- function(CF, input, agg, channels, n, cores, nRecursions = 4){
 }
 
 
+#' @export
 calculateBins <- function(CF, path, bin_boundaries, channels, n){
-  ff <- ReadInput(CF, path, n = n)
+  ff <- readInput(CF, path, n = n)
   df <- data.frame(ff@exprs[,channels], check.names=FALSE)
   stats <- c()
   for (i in seq_along(channels)){
@@ -362,6 +314,7 @@ calculateBins <- function(CF, path, bin_boundaries, channels, n){
 }
 
 
+#' @export
 Bin <- function(CF, input, agg, channels, n, cores){
   # Determine the bins on the aggregated data
   bin_boundaries <- apply(agg[,channels], 2, 

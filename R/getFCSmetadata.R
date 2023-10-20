@@ -1,4 +1,5 @@
-get_FCS_metadata <- function(paths){
+#' @export
+getFCSmetadata <- function(paths){
   # Function to retrieve metadata parameters from a list of FCS paths.
   # Args:
   #   paths: list of file locations.
