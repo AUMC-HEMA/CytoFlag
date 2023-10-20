@@ -149,10 +149,10 @@ Quantiles <- function(CF, input, channels, n, cores){
   if (cores > 1){
     cl <- parallel::makeCluster(cores)
     doParallel::registerDoParallel(cl)
-    parallel::clusterExport(cl, c(CF[["parallel_vars"]], "calculateQuantiles"))
+    parallel::clusterExport(cl, c(CF[["parallel"]][["parallelVars"]], "calculateQuantiles"))
     `%dopar%` <- foreach::`%dopar%`
     all_stats <- foreach::foreach(path = input, .combine = "c", 
-                                  .packages = CF[["parallel_packages"]]) %dopar% {
+                                  .packages = CF[["parallel"]][["parallelPackages"]]) %dopar% {
                                     stats <- list(calculateQuantiles(CF, path, channels, n))
                                     names(stats) <- path
                                     return(stats)
@@ -189,10 +189,10 @@ summaryStats <- function(CF, input, channels, n, cores){
   if (cores > 1){
     cl <- parallel::makeCluster(cores)
     doParallel::registerDoParallel(cl)
-    parallel::clusterExport(cl, c(CF[["parallel_vars"]], "calculateSummary"))
+    parallel::clusterExport(cl, c(CF[["parallel"]][["parallelVars"]], "calculateSummary"))
     `%dopar%` <- foreach::`%dopar%`
     all_stats <- foreach::foreach(path = input, .combine = "c", 
-                           .packages = CF[["parallel_packages"]]) %dopar% {
+                           .packages = CF[["parallel"]][["parallelPackages"]]) %dopar% {
                            stats <- list(calculateSummary(CF, path, channels, n))
                            names(stats) <- path
                            return(stats)
@@ -230,11 +230,11 @@ EMD <- function(CF, input, agg, channels, n, cores){
   if (cores > 1){
     cl <- parallel::makeCluster(cores)
     doParallel::registerDoParallel(cl)
-    parallel::clusterExport(cl, c(CF[["parallel_vars"]], "agg", "calculateEMD"),
+    parallel::clusterExport(cl, c(CF[["parallel"]][["parallelVars"]], "agg", "calculateEMD"),
                             envir=environment())
     `%dopar%` <- foreach::`%dopar%`
     all_stats <- foreach::foreach(path = input, .combine = "c", 
-                                  .packages = c(CF[["parallel_packages"]], "transport")) %dopar% {
+                                  .packages = c(CF[["parallel"]][["parallelPackages"]], "transport")) %dopar% {
                                     stats <- list(calculateEMD(CF, path, agg, channels, n))
                                     names(stats) <- path
                                     return(stats)
@@ -274,11 +274,11 @@ Fingerprint <- function(CF, input, agg, channels, n, cores, nRecursions = 4){
   if (cores > 1){
     cl <- parallel::makeCluster(cores)
     doParallel::registerDoParallel(cl)
-    parallel::clusterExport(cl, c(CF[["parallel_vars"]], "model", 
+    parallel::clusterExport(cl, c(CF[["parallel"]][["parallelVars"]], "model", 
                                   "calculateFingerprint"), envir=environment())
     `%dopar%` <- foreach::`%dopar%`
     all_stats <- foreach::foreach(path = input, .combine = "c", 
-                                  .packages = c(CF[["parallel_packages"]], "flowFP")) %dopar% {
+                                  .packages = c(CF[["parallel"]][["parallelPackages"]], "flowFP")) %dopar% {
                                   stats <- calculateFingerprint(CF, path, model, channels, n)
                                   names(stats) <- path
                                   return(stats)
@@ -323,11 +323,11 @@ Bin <- function(CF, input, agg, channels, n, cores){
   if (cores > 1){
     cl <- parallel::makeCluster(cores)
     doParallel::registerDoParallel(cl)
-    parallel::clusterExport(cl, c(CF[["parallel_vars"]], "bin_boundaries", 
+    parallel::clusterExport(cl, c(CF[["parallel"]][["parallelVars"]], "bin_boundaries", 
                                   "calculateBins"), envir=environment())
     `%dopar%` <- foreach::`%dopar%`
     all_stats <- foreach::foreach(path = input, .combine = "c", 
-                                  .packages = CF[["parallel_packages"]]) %dopar% {
+                                  .packages = CF[["parallel"]][["parallelPackages"]]) %dopar% {
                                     stats <- calculateBins(CF, path, bin_boundaries, 
                                                            channels, n)
                                     names(stats) <- path

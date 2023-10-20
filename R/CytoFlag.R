@@ -8,9 +8,9 @@
 CytoFlag <- function(){
   CF <- list(list())
   class(CF) <- "CytoFlag"
-  CF[["preprocess_function"]] <- processInput
-  CF[["parallel_vars"]] <- c("channels", "CF", "readInput")
-  CF[["parallel_packages"]] <- c("flowCore", "PeacoQC")
+  CF[["preprocessFunction"]] <- processInput
+  CF[["parallel"]] <- list("parallelVars" = c("channels", "CF", "readInput"),
+                           "parallelPackages" = c("flowCore", "PeacoQC"))
   return(CF)
 }
 

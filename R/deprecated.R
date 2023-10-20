@@ -141,10 +141,10 @@ LandmarkStats <- function(CF, input, channels, n, cores){
   if (cores > 1){
     cl <- parallel::makeCluster(cores)
     doParallel::registerDoParallel(cl)
-    parallel::clusterExport(cl, c(CF[["parallel_vars"]], "calculateLandmarks"))
+    parallel::clusterExport(cl, c(CF[["parallel"]][["parallelVars"]], "calculateLandmarks"))
     `%dopar%` <- foreach::`%dopar%`
     all_stats <- foreach::foreach(path = input, .combine = "c", 
-                                  .packages = CF[["parallel_packages"]]) %dopar% {
+                                  .packages = CF[["parallel"]][["parallelPackages"]]) %dopar% {
                                   stats <- list(calculateLandmarks(CF, path, channels, n))
                                   names(stats) <- path
                                   return(stats)
