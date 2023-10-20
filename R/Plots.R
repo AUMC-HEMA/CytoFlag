@@ -207,11 +207,11 @@ PlotPCA <- function(CF, featMethod, plotRef = FALSE,
 }
 
 
-PlotAnomaly <- function(CF, idx, channel, n = 500, includeRef = "auto"){
+PlotAnomaly <- function(CF, file, channel, n = 500, includeRef = "auto"){
   # Read the anomalous data
-  ff_anom <- ReadInput(CF, CF$test_paths[idx], n = n)
+  ff_anom <- ReadInput(CF, file, n = n)
   df_anom <- data.frame(ff_anom@exprs, check.names=FALSE)
-  df_anom$index <- as.character(idx)
+  df_anom$index <- file
   df_anom$category <- "Outlier"
   
   if (includeRef == "auto"){
@@ -220,26 +220,25 @@ PlotAnomaly <- function(CF, idx, channel, n = 500, includeRef = "auto"){
   # Sample n other samples from test data
   set.seed(42)
   if (includeRef){
-    test_indices <- 1:length(CF$ref_paths)
+    test_files <- CF$ref_paths
     background_label <- "Reference"
   } else {
-    test_indices <- setdiff(1:length(CF$test_paths), idx)
+    test_files <- CF$test_paths[CF$test_paths != file]
     background_label <- "Other test samples"
   }
-  if (length(test_indices) > 20){
-    test_indices <- sample(test_indices, 20, replace = FALSE)
+  if (length(test_files) > 20){
+    test_files <- sample(test_files, 20, replace = FALSE)
   }
   
   test_data <- list()
-  for (test_idx in test_indices){
-    print(test_idx)
-    ff <- ReadInput(CF, CF$test_paths[[test_idx]], n  = n)
-    df <- data.frame(ff@exprs[,channels], check.names=FALSE)
-    df$index <- as.character(test_idx)
+  for (test_file in test_files){
+    ff <- ReadInput(CF, test_file, n  = n)
+    df <- data.frame(ff@exprs, check.names=FALSE)
+    df$index <- as.character(test_file)
     df$category <- background_label
-    test_data[[test_idx]] <- df
+    test_data[[test_file]] <- df
   }
-  test_data <- do.call("rbind", test_data)
+  test_data <- data.frame(dplyr::bind_rows(test_data), check.names = FALSE)
   all_data <- rbind(df_anom, test_data)
   
   ggplot2::ggplot(all_data, ggplot2::aes(x = .data[[channel]], y = .data[["index"]],
