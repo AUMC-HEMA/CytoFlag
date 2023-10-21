@@ -2,24 +2,25 @@
 % Please edit documentation in R/CytoFlag.R
 \name{Flag}
 \alias{Flag}
-\title{Flag anomalies in CytoFlag object}
+\title{Flag anomalies based on generated features}
 \usage{
-Flag(CF, featMethod = NULL, flagStrat = "outlier", PCA = FALSE)
+Flag(CF, featMethod, flagStrat, PCA = FALSE)
 }
 \arguments{
 \item{CF}{CytoFlag object}
 
-\item{featMethod}{Feature generation method to use.
-Either one of: "summary", "EMD", "binning" or "fingerprint".}
+\item{featMethod}{Which features to use for anomaly detection}
 
-\item{flagStrat}{Which anomaly detection strategy to use ("outlier" or "novelty").
-By default, selects intended use based on availability of reference material.}
+\item{flagStrat}{Which flaggins strategy to use ("outlier" or "novelty")}
 
-\item{PCA}{Whether to reduce dimensionality to first two PCs. (default = FALSE)}
+\item{PCA}{Reduce features to 2D PCA before flagging (default = FALSE)}
 }
 \value{
 CytoFlag object
 }
 \description{
-Flag anomalies in CytoFlag object
+Flag anomalies based on generated features
+}
+\seealso{
+\code{\link{generateFeatures}}
 }

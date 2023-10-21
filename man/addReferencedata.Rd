@@ -2,7 +2,7 @@
 % Please edit documentation in R/CytoFlag.R
 \name{addReferencedata}
 \alias{addReferencedata}
-\title{Add reference data to initialized CytoFlag object}
+\title{Add reference data to CytoFlag object}
 \usage{
 addReferencedata(CF, input, read = FALSE, reload = FALSE, aggSize = 10000)
 }
@@ -11,15 +11,18 @@ addReferencedata(CF, input, read = FALSE, reload = FALSE, aggSize = 10000)
 
 \item{input}{List of FCS file paths}
 
-\item{read}{Whether to read FCS files already (default = FALSE)}
+\item{read}{Whether load subsampled data already (default = FALSE)}
 
-\item{reload}{Whether to read ALL fcs files, including previously loaded (default = FALSE)}
+\item{reload}{Reload all data (default = FALSE)}
 
-\item{aggSize}{How many cells to use in total for aggregate sample (default = 10000)}
+\item{aggSize}{Size of aggregate sample (default = 10000 cells)}
 }
 \value{
 CytoFlag object
 }
 \description{
-Add reference data to initialized CytoFlag object
+Add reference data to CytoFlag object
+}
+\seealso{
+\code{\link{addTestdata}}
 }
