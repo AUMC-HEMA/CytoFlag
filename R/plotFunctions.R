@@ -224,10 +224,10 @@ plotAnomaly <- function(CF, file, channel, n = 500, includeRef = "auto"){
   # Sample n other samples from test data
   set.seed(42)
   if (includeRef){
-    test_files <- CF$ref_paths
+    test_files <- CF$paths$reference
     background_label <- "Reference"
   } else {
-    test_files <- CF$test_paths[CF$test_paths != file]
+    test_files <- CF$paths$test[CF$paths$test != file]
     background_label <- "Other test samples"
   }
   if (length(test_files) > 20){

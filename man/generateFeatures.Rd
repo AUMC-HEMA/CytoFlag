@@ -2,15 +2,15 @@
 % Please edit documentation in R/generateFeatures.R
 \name{generateFeatures}
 \alias{generateFeatures}
-\title{Generate features and attach to CytoFlag object}
+\title{Generate features}
 \usage{
 generateFeatures(
   CF,
   channels,
   featMethod = "summary",
   n = 1000,
-  aggSize = 10000,
   aggSlot = "auto",
+  aggSize = 10000,
   cores = "auto",
   recalculate = FALSE,
   nRecursions = 4
@@ -19,25 +19,25 @@ generateFeatures(
 \arguments{
 \item{CF}{CytoFlag object}
 
-\item{channels}{Channels to calculate features for}
+\item{channels}{Channels to use for feature generation}
 
 \item{featMethod}{Feature generation method to use}
 
-\item{n}{How many cells to use for feature generation}
-
-\item{aggSize}{How many cells to use in total for aggregate sample (default = 10000)}
+\item{n}{Number of cells to use for feature generation (default = 1000)}
 
 \item{aggSlot}{Whether to use reference or test data as aggregate (default = "auto")}
 
-\item{cores}{How many cores to use for parallelization (default = 50%)}
+\item{aggSize}{How many cells to use in total for aggregate sample (default = 10000)}
+
+\item{cores}{How many cores to use for parallelization}
 
 \item{recalculate}{Whether to recalculate features for existing data}
 
 \item{nRecursions}{Number of recursions to use for fingerprinting (default = 4)}
 }
 \value{
-Dataframe with features (columns) for samples (rows)
+CytoFlag object
 }
 \description{
-Generate features and attach to CytoFlag object
+Generate features
 }

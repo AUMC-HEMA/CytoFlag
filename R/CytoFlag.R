@@ -60,7 +60,7 @@ processInput <- function(ff){
 }
 
 
-#' @noRd
+#' @export
 readInput <- function(CF, path, n = NULL){
   set.seed(42)
   ff <- flowCore::read.FCS(path, which.lines = n)
@@ -70,28 +70,27 @@ readInput <- function(CF, path, n = NULL){
 
 
 #' @noRd
-addData <- function(CF, input, pathSlot, dataSlot, read, 
-                    reload, aggSize){
+addData <- function(CF, input, type, read, reload, aggSize){
   # Check if the paths are already stored in the CytoFlag object
-  if (pathSlot %in% names(CF) & !reload){
+  if (type %in% names(CF$paths) & !reload){
     for (path in input){
-      if (!path %in% CF[[pathSlot]]){
+      if (!path %in% CF$paths[[type]]){
         message(paste("Concatenating additional file path", path))
-        CF[[pathSlot]] <- c(CF[[pathSlot]], path)
+        CF$paths[[type]] <- c(CF$paths[[type]], path)
         if (read == TRUE){
           ff <- readInput(CF, path, CF$nAgg)
-          CF[[dataSlot]][[path]] <- data.frame(ff@exprs, check.names = FALSE)
+          CF$data[[type]][[path]] <- data.frame(ff@exprs, check.names = FALSE)
           }
         }
       }
     } else {
-      CF[[pathSlot]] <- input
+      CF$paths[[type]] <- input
       if (read == TRUE){
         CF$aggSize <- aggSize
         CF$nAgg <- round(aggSize / length(input))
         for (path in input){
           ff <- readInput(CF, path, CF$nAgg)
-          CF[[dataSlot]][[path]] <- data.frame(ff@exprs, check.names = FALSE)
+          CF$data[[type]][[path]] <- data.frame(ff@exprs, check.names = FALSE)
         }
       }
     }
@@ -114,7 +113,7 @@ addData <- function(CF, input, pathSlot, dataSlot, read,
 #' @export
 addTestdata <- function(CF, input, read = FALSE, reload = FALSE,
                         aggSize = 10000){
-  CF <- addData(CF, input, "test_paths", "test_data", read, reload, aggSize)
+  CF <- addData(CF, input, "test", read, reload, aggSize)
   return(CF)
 }
 
@@ -134,7 +133,7 @@ addTestdata <- function(CF, input, read = FALSE, reload = FALSE,
 #' @export
 addReferencedata <- function(CF, input, read = FALSE, reload = FALSE,
                              aggSize = 10000){
-  CF <- addData(CF, input, "ref_paths", "ref_data", read, reload, aggSize)
+  CF <- addData(CF, input, "reference", read, reload, aggSize)
   return(CF)
 }
 
