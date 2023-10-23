@@ -175,7 +175,7 @@ Flag <- function(CF, featMethod, flagStrat, PCA = FALSE){
     novelties <- as.factor(ifelse(testScores < threshold, TRUE, FALSE))
     CF$novelties[[featMethod]] <- novelties
   } else if (flagStrat == "outlier"){
-    forest <- isotree::isolation.forest(testFeatures, sample_size = NULL,
+    forest <- isotree::isolation.forest(testFeatures, sample_size = 1,
                                         ntrees = 1000,
                                         ndim = 1, seed = 42)
     scores <- stats::predict(forest, testFeatures)
@@ -185,3 +185,4 @@ Flag <- function(CF, featMethod, flagStrat, PCA = FALSE){
   }
   return(CF)
 }
+
