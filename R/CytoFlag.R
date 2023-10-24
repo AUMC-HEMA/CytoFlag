@@ -87,7 +87,7 @@ addData <- function(CF, input, type, read, reload, aggSize){
       CF$paths[[type]] <- input
       if (read == TRUE){
         CF$aggSize <- aggSize
-        CF$nAgg <- round(aggSize / length(input))
+        CF$nAgg <- ceiling(aggSize / length(input))
         for (path in input){
           ff <- readInput(CF, path, CF$nAgg)
           CF$data[[type]][[path]] <- data.frame(ff@exprs, check.names = FALSE)
