@@ -38,14 +38,13 @@ getAggregate <- function(CF, aggSize, aggSlot = "auto"){
 #' @param aggSize How many cells to use in total for aggregate sample (default = 10000)
 #' @param cores How many cores to use for parallelization
 #' @param recalculate Whether to recalculate features for existing data
-#' @param nRecursions Number of recursions to use for fingerprinting (default = 4)
 #'
 #' @return CytoFlag object
 #' 
 #' @export
 generateFeatures <- function(CF, channels, featMethod = "summary", n = 1000,
                              aggSlot = "auto", aggSize = 10000, cores = "auto", 
-                             recalculate = FALSE, nRecursions = 4){
+                             recalculate = FALSE){
   if (cores == "auto"){
       cores = parallel::detectCores() / 2 
       message(paste("Using 50% of cores:", cores))
@@ -53,59 +52,61 @@ generateFeatures <- function(CF, channels, featMethod = "summary", n = 1000,
   
   # Summary statistics and quantiles are calculated for individual files
   if (featMethod %in% c("summary", "quantiles")){
-    if (featMethod == "summary"){
-      func <- summaryStats
-    }
-    if (featMethod == "quantiles"){
-      func <- Quantiles
-    }
-    # Generate features for the reference and test paths slots (if in CF object)
-    for (slot in c("reference", "test")){
-      if (slot %in% names(CF$paths)){
-        if (!featMethod %in% names(CF$features[[slot]]) || recalculate == TRUE){
-          # Generate features for all paths
-          CF$features[[slot]][[featMethod]] <- func(CF, CF$paths[[slot]],
-                                                    channels, n, cores)
-        } else {
-          # Generate features for the new file paths
-          new_paths <- c()
-          for (path in CF$paths[[slot]]){
-            if (!path %in% rownames(CF$features[[slot]][[featMethod]])){
-              message("Generating additional features")
-              new_paths <- c(new_paths, path)
-            }
-          }
-          if (length(new_paths) == 0){
-            message(paste("Did not detect any new files for", slot, "slot"))
-            message("Force re-calculation of statistics in this slot using recalculate = TRUE.")
-            next
-          } else {
-            new_stats <- func(CF, new_paths, channels, n, cores)
-          }
-          CF$features[[slot]][[featMethod]] <- rbind(CF$features[[slot]][[featMethod]], 
-                                                     new_stats)
-        }
-      }
-    }
-    return(CF)
+    useAgg <- FALSE
+  } else {
+    agg <- getAggregate(CF, aggSize = aggSize, aggSlot = aggSlot)
+    useAgg <- TRUE
   }
-  # Everything from here depends on aggregated data
-  agg <- getAggregate(CF, aggSize = aggSize, aggSlot = aggSlot)
+  if (featMethod == "summary"){
+    func <- summaryStats
+  }
+  if (featMethod == "quantiles"){
+    func <- Quantiles
+  }
+  if (featMethod == "binning"){
+    func <- Bin
+  }
+  if (featMethod == "EMD"){
+    func <- EMD
+  }
+  if (featMethod == "fingerprint"){
+    func <- Fingerprint
+  }
+  
+  # Generate features for the reference and test paths slots (if in CF object)
   for (slot in c("reference", "test")){
     if (slot %in% names(CF$paths)){
       if (!featMethod %in% names(CF$features[[slot]]) || recalculate == TRUE){
-        paths <- CF$paths[[slot]]
-        if (featMethod == "binning"){
-          CF$features[[slot]][[featMethod]] <- Bin(CF, paths, agg, channels, n, 
-                                                   cores)
-        } else if (featMethod == "EMD"){
-          CF$features[[slot]][[featMethod]] <- EMD(CF, paths, agg, channels, n, 
-                                                   cores)
-        } else if (featMethod == "fingerprint"){
-          CF$features[[slot]][[featMethod]] <- Fingerprint(CF, paths, agg, 
-                                                           channels, n, cores, 
-                                                           nRecursions)
+        # Generate features for all paths
+        if (useAgg){
+          CF$features[[slot]][[featMethod]] <- func(CF, CF$paths[[slot]], agg,
+                                                    channels, n, cores)
+        } else {
+          CF$features[[slot]][[featMethod]] <- func(CF, CF$paths[[slot]],
+                                                    channels, n, cores)
         }
+      } else {
+        # Generate features for the new file paths
+        new_paths <- c()
+        for (path in CF$paths[[slot]]){
+          if (!path %in% rownames(CF$features[[slot]][[featMethod]])){
+            message("Generating additional features")
+            new_paths <- c(new_paths, path)
+          }
+        }
+        if (length(new_paths) == 0){
+          message(paste("Did not detect any new files for", slot, "slot"))
+          message("Force re-calculation of statistics in this slot using recalculate = TRUE.")
+          next
+        } else {
+          if (useAgg){
+            new_stats <- func(CF, new_paths, agg, channels, n, cores)
+          } else {
+            new_stats <- func(CF, new_paths, channels, n, cores)
+          }
+        }
+        CF$features[[slot]][[featMethod]] <- rbind(CF$features[[slot]][[featMethod]], 
+                                                   new_stats)
       }
     }
   }
