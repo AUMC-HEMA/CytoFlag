@@ -10,7 +10,7 @@ CytoFlag <- function(){
   class(CF) <- "CytoFlag"
   CF[["preprocessFunction"]] <- processInput
   CF[["parallel"]] <- list("parallelVars" = c("channels", "CF", "readInput"),
-                           "parallelPackages" = c("flowCore", "PeacoQC"))
+                           "parallelPackages" = c("flowCore"))
   return(CF)
 }
 
@@ -49,7 +49,6 @@ addReferencelabels <- function(CF, labels){
 
 #' @noRd
 processInput <- function(ff){
-  ff <- PeacoQC::RemoveMargins(ff, channels)
   spill <- ff@description$SPILL
   ff <- flowCore::compensate(ff, spill)
   ff <- flowCore::transform(ff, flowCore::transformList(colnames(spill), 
@@ -75,7 +74,7 @@ addData <- function(CF, input, type, read, reload, aggSize){
   if (type %in% names(CF$paths) & !reload){
     for (path in input){
       if (!path %in% CF$paths[[type]]){
-        message(paste("Concatenating additional file path", path))
+        # message(paste("Concatenating additional file path", path))
         CF$paths[[type]] <- c(CF$paths[[type]], path)
         if (read == TRUE){
           ff <- readInput(CF, path, CF$nAgg)
