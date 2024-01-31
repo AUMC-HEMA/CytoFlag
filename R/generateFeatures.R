@@ -43,8 +43,8 @@ getAggregate <- function(CF, aggSize, aggSlot = "auto"){
 #' 
 #' @export
 generateFeatures <- function(CF, channels, featMethod = "summary", n = 1000,
-                             aggSlot = "auto", aggSize = 10000, cores = "auto", 
-                             recalculate = FALSE){
+                             quantileDist = 0.1, aggSlot = "auto", aggSize = 10000, 
+                             cores = "auto", recalculate = FALSE){
   if (cores == "auto"){
       cores = parallel::detectCores() / 2 
       message(paste("Using 50% of cores:", cores))
@@ -82,8 +82,13 @@ generateFeatures <- function(CF, channels, featMethod = "summary", n = 1000,
           CF$features[[slot]][[featMethod]] <- func(CF, CF$paths[[slot]], agg,
                                                     channels, n, cores)
         } else {
-          CF$features[[slot]][[featMethod]] <- func(CF, CF$paths[[slot]],
-                                                    channels, n, cores)
+          if (featMethod == "quantiles"){
+            CF$features[[slot]][[featMethod]] <- func(CF, CF$paths[[slot]],
+                                                      channels, n, cores, quantileDist)
+          } else {
+            CF$features[[slot]][[featMethod]] <- func(CF, CF$paths[[slot]],
+                                                      channels, n, cores)
+          }
         }
       } else {
         # Generate features for the new file paths
@@ -115,17 +120,21 @@ generateFeatures <- function(CF, channels, featMethod = "summary", n = 1000,
 
 
 #' @export
-calculateQuantiles <- function(CF, path, channels, n){
+calculateQuantiles <- function(CF, path, channels, n, quantileDist){
   ff <- readInput(CF, path, n)
   df <- data.frame(ff@exprs[,channels], check.names = FALSE)
   stats <- list()
   # Calculate quantiles for every variable
   percentiles <- lapply(df, function(col) quantile(col,
-                                                   probs = seq(0.1, 0.9, 0.1)))
+                                                   probs = seq(quantileDist, 
+                                                             1 - quantileDist,
+                                                             quantileDist)))
   stats <- list()
   for (i in names(percentiles)){
     for (j in names(percentiles[[i]])){
-      stats[[paste0(i, "_", j)]] <- percentiles[[i]][[j]]
+      # Remove '%' character
+      quantile <- as.numeric(gsub("%", "", j)) / 100
+      stats[[paste0(i, "_", quantile)]] <- percentiles[[i]][[j]]
     }
   }
   stats <- data.frame(stats, check.names=FALSE)
@@ -134,7 +143,7 @@ calculateQuantiles <- function(CF, path, channels, n){
 
 
 #' @export
-Quantiles <- function(CF, input, channels, n, cores){
+Quantiles <- function(CF, input, channels, n, cores, quantileDist){
   if (cores > 1){
     cl <- parallel::makeCluster(cores)
     doParallel::registerDoParallel(cl)
@@ -145,7 +154,8 @@ Quantiles <- function(CF, input, channels, n, cores){
                                   .packages = CF[["parallel"]][["parallelPackages"]]) %dopar% {
                                     stats <- list(calculateQuantiles(CF, path, 
                                                                      channels,
-                                                                     n))
+                                                                     n,
+                                                                     quantileDist))
                                     names(stats) <- path
                                     return(stats)
                                   }
