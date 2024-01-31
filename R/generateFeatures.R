@@ -107,7 +107,11 @@ generateFeatures <- function(CF, channels, featMethod = "summary", n = 1000,
           if (useAgg){
             new_stats <- func(CF, new_paths, agg, channels, n, cores)
           } else {
-            new_stats <- func(CF, new_paths, channels, n, cores)
+            if (featMethod == "quantiles"){
+              new_stats <- func(CF, CF$paths[[slot]], channels, n, cores, quantileDist)
+            } else {
+              new_stats <- func(CF, CF$paths[[slot]], channels, n, cores)
+            }
           }
         }
         CF$features[[slot]][[featMethod]] <- rbind(CF$features[[slot]][[featMethod]], 
@@ -163,7 +167,7 @@ Quantiles <- function(CF, input, channels, n, cores, quantileDist){
   } else {
     all_stats <- list()
     for (path in input){
-      stats <- calculateQuantiles(CF, path, channels, n)
+      stats <- calculateQuantiles(CF, path, channels, n, quantileDist)
       all_stats[[path]] <- stats
     }
   }
