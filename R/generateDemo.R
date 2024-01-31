@@ -8,7 +8,6 @@ generateChannel <- function(nCells){
   return(channel)
 }
 
-
 #' @export
 generateFlowframe <- function(nCells, nChannels){
   # Generate expression data
@@ -31,13 +30,17 @@ generateFlowframe <- function(nCells, nChannels){
   desc <- list("SPILL" = spillover)
   
   # Create flowframe
+  ##############################################################################
+  # Figure out how to remove this function call!
+  ##############################################################################
+  library(flowCore)
   ff <- new("flowFrame",
             exprs = exprs,
             parameters = Biobase::AnnotatedDataFrame(meta),
             description = desc)
   # Apply a reverse logicle transformation
   logicle  <- flowCore::logicleTransform()
-  tfList <- flowCore::transformList(colnames(ff), 
+  tfList <- flowCore::transformList(colnames(ff@exprs), 
                                     flowCore::inverseLogicleTransform(trans = logicle))
   ff <- flowCore::transform(ff, tfList)
   return(ff)
@@ -59,6 +62,6 @@ generateDemo <- function(dir, nFiles, nCells, nChannels){
   }
   for (i in seq(1, nFiles)){
     ff <- generateFlowframe(nCells, nChannels)
-    write.FCS(ff, paste0(dir, "/", as.character(i), ".fcs"))
+    flowCore::write.FCS(ff, paste0(dir, "/", as.character(i), ".fcs"))
   }
 }
