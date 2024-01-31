@@ -5,6 +5,7 @@
 #' @param refFeatures Dataframe of features from reference samples
 #'
 #' @return List containing PC loadings, variance and reduced features
+#' @export
 reduceDim <- function(testFeatures, flagStrat, refFeatures = NULL){
   if (flagStrat == "outlier"){
     pca <- stats::prcomp(testFeatures, center = TRUE, scale = TRUE)
