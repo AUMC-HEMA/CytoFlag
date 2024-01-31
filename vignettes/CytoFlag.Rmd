@@ -29,6 +29,20 @@ vignette: |
 
 The CytoFlag workflow takes file paths of .fcs files as input. 
 
+We provide the generateDemo function which generates a folder containing a small
+set of FCS files which is used in this tutorial.
+
+## Loading the demo data
+
+```{r}
+# Create a folder "demo_data" containing 100 small FCS files for demonstration
+generateDemo(dir = "demo_data", nFiles = 100, nCells = 1000, nChannels = 8)
+
+# List the generated files
+files <- list.files("demo_data", full.names = TRUE)
+head(files)
+```
+
 ## Initializing a CytoFlag object
 
 The first step is always to initialize a CytoFlag object. This object stores all 
@@ -46,144 +60,138 @@ If you want to use CytoFlag for outlier detection, you add all the data as
 "test data". This means that all models are trained and outliers are detected
 on the full dataset.
 
-```{r, eval=FALSE}
+```{r}
 CF <- CytoFlag()
 CF <- addTestdata(CF, files) 
 ```
 
 If you want to use CytoFlag for novelty, you have to define reference data as
-well.In this case, models will be trained on the reference data, before identifying
+well. In this case, models will be trained on the reference data, before identifying
 novelties in the test data.
 
-```{r, eval=FALSE}
+```{r}
 CF <- CytoFlag()
-CF <- addTestdata(CF, test_files) 
-CF <- addReferencedata(CF, ref_files) 
+CF <- addReferencedata(CF, files[1:50]) 
+CF <- addTestdata(CF, files[51:100]) 
 ```
-
-### Adding additional cytometry data
-
-CytoFlag allows for the addition of additional data at a different timepoint.
-
-To add additional data, you call the AddTestData or AddReferenceData functions
-a second time with different input. CytoFlag will identify new files, and will 
-concatenate the new ones.
 
 ### Adding labels
 
 If you want to visualize different known variables in CytoFlag visualizations,
 you have to add these to the CytoFlag object as follows:
 
-```{r, eval=FALSE}
-# For test data
-CF <- addTestlabels(CF, test_labels)
+```{r}
+# Generate some random batches
+refLabels <- sample(c("batch1", "batch2"), 50, replace = TRUE)
+testLabels <- sample(c("batch1", "batch2"), 50, replace = TRUE)
+head(refLabels)
+```
 
-# For reference data
-CF <- addReferencelabels(CF, ref_labels)
+```{r}
+# Add them to the CytoFlag object
+CF <- addReferencelabels(CF, refLabels)
+CF <- addTestlabels(CF, testLabels)
 ```
 
 ### Custom pre-processing
+
 By default, CytoFlag uses the same pre-processing function for all loaded 
-flowframes. This consists of the removal of margin events, compensation using
-the $SPILL variable in the flowframe description, followed by an arcsinh
-transformation with a co-factor of 150.
+flowframes. 
 
 You can modify this by supplying your own pre-processing function, for example
 by only performing a MinMax normalization.
 
-```{r, eval=FALSE}
+```{r}
 CF <- CytoFlag()
 
-# Define a pre-processing function which only MinMax normalizes the expression
-custom_preprocess <- function(ff){
-  channels <- ff@exprs[,cols]
-  channels <- channels[channels != "Time"]
-  ff@exprs[,channels] <- apply(ff@exprs[,channels], 2, function(x){
-    return((x - quantile(x, 0.001)) / (quantile(x, 0.999) - quantile(x, 0.001)))
+# Define a custom function which also scales expression values from 0 to 1
+MinMax <- function(ff){
+  spill <- ff@description$SPILL
+  ff <- flowCore::compensate(ff, spill)
+  ff <- flowCore::transform(ff, flowCore::transformList(colnames(spill), 
+                                            flowCore::arcsinhTransform(a = 0, 
+                                                                       b = 1/150, 
+                                                                       c = 0)))
+  ff@exprs[, colnames(spill)] <- apply(ff@exprs[, colnames(spill)], 2, function(x){
+    return((x - quantile(x, 0.01)) / (quantile(x, 0.99) - quantile(x, 0.01)))
+  })
   return(ff)
 }
 
-# Replace the default preprocessing function
-CF$preprocess_function() <- custom_preprocess
+# Replace the default pre-processing
+CF$preprocessFunction <- MinMax
 
-# Continue workflow
-# ...
+# Read some data
+CF <- addTestdata(CF, files[1], read = TRUE, aggSize = 1000)
+
+# Plot a histogram of the first marker
+hist(CF$data$test[[files[1]]][, 1], main = files[1], xlab = "Scaled expression")
 ```
 
 ## Feature generation
 
-Feature generation is performed with the "FeatureGeneration" function. The following
-feature generation methods are available:
-
-| **featMethod** | **Description**                                              |
-| -------------- | ------------------------------------------------------------ |
-| "summary"      | Calculates summary statistics for all files (individually)   |
-| "landmarks"    | Calculates landmark statistics for all files (individually)      |
-| "EMD"          | Aggregates data and calculates earth mover's distance to aggregates data |
-| "binning"      | Aggregates data, identifies bin boundaries and calculates bin percentages for all files |
-| "fingerprint"  | Aggregates data, identifies high-dimensional bin boundaries (FlowFP) and calculates bin percentages for all files |
-
-
-The features are added to the object separately for reference and test data.
-
-Currently, if only test data is added, aggregated data is obtained from the 
-test data. If reference data is available, then the reference data is used for 
-aggregation.
-
-
 ### Generating features for outlier detection
 
-```{r, eval=FALSE}
+```{r}
 CF <- CytoFlag() 
 CF <- addTestdata(CF, files)
-channels <- c("channelA", "channelB", "channelC")
-CF <- generateFeatures(CF, channels = channels, featMethod = "summary")
+# The channels of the simulated data are letters of the alphabet
+channels <- LETTERS[1:8]
+CF <- generateFeatures(CF, channels = channels, featMethod = "quantiles")
+head(CF$features$test$quantiles)
 ```
 
 ### Generating features for novelty detection
 
-```{r, eval=FALSE}
-CF <- CytoFlag() 
-CF <- addTestdata(CF, test_files) 
-CF <- addReferencedata(CF, ref_files) 
-channels <- c("channelA", "channelB", "channelC")
-CF <- generateFeatures(CF, channels = channels, featMethod = "summary")
-```
+In this example, we use the earth mover's distance (EMD). Because these distances
+are calculated against an aggregated set of cells.
 
+If reference data is present, this is automatically used for aggregation.
+
+```{r, eval=FALSE}
+CF <- CytoFlag()
+CF <- addReferencedata(CF, files[51:100]) 
+CF <- addTestdata(CF, files[1:50]) 
+CF <- generateFeatures(CF, channels = channels, featMethod = "EMD")
+head(CF$features$test$EMD)
+```
 
 ## Flagging anomalies
 
-By default, CytoFlag determines a flagging strategy based on the presence of
-reference data. If this is the case, the default "auto" setting of flagStrat
-defaults to novelty detection.
-
 ### Flagging anomalies using outlier detection
 
-```{r, eval=FALSE}
+```{r}
 CF <- CytoFlag() 
 CF <- addTestdata(CF, files)
-channels <- c("channelA", "channelB", "channelC")
-CF <- generateFeatures(CF, channels = channels, featMethod = "summary")
-CF <- Flag(CF, flagStrat = "outlier")
+# The channels of the simulated data are letters of the alphabet
+channels <- LETTERS[1:8]
+CF <- generateFeatures(CF, channels = channels, featMethod = "quantiles")
+CF <- Flag(CF, featMethod = "quantiles", flagStrat = "outlier")
+head(CF$outliers$quantiles)
 ```
 
 ### Flagging anomalies using novelty detection
 
-```{r, eval=FALSE}
-CF <- CytoFlag() 
-CF <- addTestdata(CF, test_files) 
-CF <- addReferencedata(CF, ref_files) 
-channels <- c("channelA", "channelB", "channelC")
-CF <- generateFeatures(CF, channels = channels, featMethod = "summary")
-CF <- Flag(CF, flagStrat = "novelty")
-```
-
-
-## Detecting potential batch-effect related clusters
-
 TO-DO
 
 ## Visualizations
+
+```{r}
+CF <- CytoFlag() 
+CF <- addReferencedata(CF, files[0:50])
+CF <- addTestdata(CF, files[51:100])
+# The channels of the simulated data are letters of the alphabet
+channels <- LETTERS[1:8]
+CF <- generateFeatures(CF, channels = channels, featMethod = "quantiles",
+                       quantileDist = 0.2)
+```
+
+```{r}
+plotHeatmap(CF, featMethod = "quantiles", plotRef = TRUE)
+```
+```{r}
+# plotPCA(CF, featMethod = "quantiles", plotRef = TRUE)
+```
 
 ### Visualizing marker distributions
 
