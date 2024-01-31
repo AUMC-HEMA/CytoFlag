@@ -90,13 +90,13 @@ generateFeatures <- function(CF, channels, featMethod = "summary", n = 1000,
         new_paths <- c()
         for (path in CF$paths[[slot]]){
           if (!path %in% rownames(CF$features[[slot]][[featMethod]])){
-            message("Generating additional features")
+            # message("Generating additional features")
             new_paths <- c(new_paths, path)
           }
         }
         if (length(new_paths) == 0){
-          message(paste("Did not detect any new files for", slot, "slot"))
-          message("Force re-calculation of statistics in this slot using recalculate = TRUE.")
+          # message(paste("Did not detect any new files for", slot, "slot"))
+          # message("Force re-calculation of statistics in this slot using recalculate = TRUE.")
           next
         } else {
           if (useAgg){
@@ -139,7 +139,7 @@ Quantiles <- function(CF, input, channels, n, cores){
     cl <- parallel::makeCluster(cores)
     doParallel::registerDoParallel(cl)
     parallel::clusterExport(cl, c(CF[["parallel"]][["parallelVars"]], 
-                                  "calculateQuantiles"))
+                                  "calculateQuantiles"), envir=environment())
     `%dopar%` <- foreach::`%dopar%`
     all_stats <- foreach::foreach(path = input, .combine = "c", 
                                   .packages = CF[["parallel"]][["parallelPackages"]]) %dopar% {
@@ -182,7 +182,8 @@ summaryStats <- function(CF, input, channels, n, cores){
   if (cores > 1){
     cl <- parallel::makeCluster(cores)
     doParallel::registerDoParallel(cl)
-    parallel::clusterExport(cl, c(CF[["parallel"]][["parallelVars"]], "calculateSummary"))
+    parallel::clusterExport(cl, c(CF[["parallel"]][["parallelVars"]], "calculateSummary"),
+                            envir=environment())
     `%dopar%` <- foreach::`%dopar%`
     all_stats <- foreach::foreach(path = input, .combine = "c", 
                            .packages = CF[["parallel"]][["parallelPackages"]]) %dopar% {
