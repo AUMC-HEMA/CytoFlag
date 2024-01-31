@@ -9,11 +9,11 @@ generateFeatures(
   channels,
   featMethod = "summary",
   n = 1000,
+  quantileDist = 0.1,
   aggSlot = "auto",
   aggSize = 10000,
   cores = "auto",
-  recalculate = FALSE,
-  nRecursions = 4
+  recalculate = FALSE
 )
 }
 \arguments{
@@ -32,8 +32,6 @@ generateFeatures(
 \item{cores}{How many cores to use for parallelization}
 
 \item{recalculate}{Whether to recalculate features for existing data}
-
-\item{nRecursions}{Number of recursions to use for fingerprinting (default = 4)}
 }
 \value{
 CytoFlag object
