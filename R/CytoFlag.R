@@ -150,9 +150,6 @@ addReferencedata <- function(CF, input, read = FALSE, reload = FALSE,
 #' @export
 Flag <- function(CF, featMethod, flagStrat){
   testFeatures <- CF$features$test[[featMethod]]
-  if (flagStrat == "novelty"){
-    refFeatures <- CF$features$ref[[featMethod]]
-  }
   if (flagStrat == "outlier"){
     forest <- isotree::isolation.forest(testFeatures, sample_size = 1,
                                         ntrees = 1000,
@@ -163,6 +160,7 @@ Flag <- function(CF, featMethod, flagStrat){
     CF$outliers[[featMethod]] <- outliers
   }
   if (flagStrat == "novelty"){
+    refFeatures <- CF$features$ref[[featMethod]]
     # Based on: https://bookdown.org/egarpor/NP-UC3M/kde-ii-mult.html
     refScores <- ks::kde(x = refFeatures, eval.points = refFeatures)$estimate
     testScores <- ks::kde(x = refFeatures, eval.points = testFeatures)$estimate
