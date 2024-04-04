@@ -161,11 +161,9 @@ Flag <- function(CF, featMethod, flagStrat){
   }
   if (flagStrat == "novelty"){
     refFeatures <- CF$features$ref[[featMethod]]
-    # Based on: https://bookdown.org/egarpor/NP-UC3M/kde-ii-mult.html
-    refScores <- ks::kde(x = refFeatures, eval.points = refFeatures)$estimate
-    testScores <- ks::kde(x = refFeatures, eval.points = testFeatures)$estimate
-    threshold <- stats::quantile(refScores, 0.05)
-    novelties <- as.factor(ifelse(testScores < threshold, TRUE, FALSE))
+    nuSVM <- e1071::svm(refFeatures, type = "one-class", 
+                        kernel = "radial")
+    novelties <- predict(nuSVM, testFeatures)
     CF$novelties[[featMethod]] <- novelties
   }
   return(CF)
