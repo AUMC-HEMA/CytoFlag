@@ -142,38 +142,18 @@ addReferencedata <- function(CF, input, read = FALSE, reload = FALSE,
 #' @param CF CytoFlag object
 #' @param featMethod Which features to use for anomaly detection
 #' @param flagStrat Which flaggins strategy to use ("outlier" or "novelty")
-#' @param PCA Reduce features to 2D PCA before flagging (default = FALSE)
 #'
 #' @return CytoFlag object
 #' 
 #' @seealso \code{\link{generateFeatures}}
 #'
 #' @export
-Flag <- function(CF, featMethod, flagStrat, PCA = FALSE){
+Flag <- function(CF, featMethod, flagStrat){
   testFeatures <- CF$features$test[[featMethod]]
   if (flagStrat == "novelty"){
     refFeatures <- CF$features$ref[[featMethod]]
   }
-  if (PCA){
-    if (flagStrat == "outlier"){
-      PCAOutput <- reduceDim(testFeatures, "outlier")
-      testFeatures <- PCAOutput[["testFeatures"]]
-    }
-    if (flagStrat == "novelty"){
-      # Fits the PCA on the reference features before test
-      PCAOutput <- reduceDim(testFeatures, "novelty", refFeatures)
-      testFeatures <- PCAOutput[["testFeatures"]]
-      refFeatures <- PCAOutput[["refFeatures"]]
-    }
-  }
-  if (flagStrat == "novelty"){
-    # Based on: https://bookdown.org/egarpor/NP-UC3M/kde-ii-mult.html
-    refScores <- ks::kde(x = refFeatures, eval.points = refFeatures)$estimate
-    testScores <- ks::kde(x = refFeatures, eval.points = testFeatures)$estimate
-    threshold <- stats::quantile(refScores, 0.05)
-    novelties <- as.factor(ifelse(testScores < threshold, TRUE, FALSE))
-    CF$novelties[[featMethod]] <- novelties
-  } else if (flagStrat == "outlier"){
+  if (flagStrat == "outlier"){
     forest <- isotree::isolation.forest(testFeatures, sample_size = 1,
                                         ntrees = 1000,
                                         ndim = 1, seed = 42)
@@ -182,6 +162,13 @@ Flag <- function(CF, featMethod, flagStrat, PCA = FALSE){
     outliers <- as.factor(ifelse(scores >= 0.5, TRUE, FALSE))
     CF$outliers[[featMethod]] <- outliers
   }
+  if (flagStrat == "novelty"){
+    # Based on: https://bookdown.org/egarpor/NP-UC3M/kde-ii-mult.html
+    refScores <- ks::kde(x = refFeatures, eval.points = refFeatures)$estimate
+    testScores <- ks::kde(x = refFeatures, eval.points = testFeatures)$estimate
+    threshold <- stats::quantile(refScores, 0.05)
+    novelties <- as.factor(ifelse(testScores < threshold, TRUE, FALSE))
+    CF$novelties[[featMethod]] <- novelties
+  }
   return(CF)
 }
-
