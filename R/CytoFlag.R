@@ -162,7 +162,7 @@ Flag <- function(CF, featMethod, flagStrat){
   if (flagStrat == "novelty"){
     refFeatures <- CF$features$ref[[featMethod]]
     nuSVM <- e1071::svm(refFeatures, type = "one-class", 
-                        kernel = "radial")
+                        kernel = "radial", nu = 0.95)
     novelties <- predict(nuSVM, testFeatures)
     CF$novelties[[featMethod]] <- novelties
   }
