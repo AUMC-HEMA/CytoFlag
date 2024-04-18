@@ -108,9 +108,9 @@ generateFeatures <- function(CF, channels, featMethod = "summary", n = 1000,
             new_stats <- func(CF, new_paths, agg, channels, n, cores)
           } else {
             if (featMethod == "quantiles"){
-              new_stats <- func(CF, CF$paths[[slot]], channels, n, cores, quantileDist)
+              new_stats <- func(CF, new_paths, channels, n, cores, quantileDist)
             } else {
-              new_stats <- func(CF, CF$paths[[slot]], channels, n, cores)
+              new_stats <- func(CF, new_paths, channels, n, cores)
             }
           }
         }
