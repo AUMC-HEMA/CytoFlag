@@ -7,24 +7,33 @@
 plotPCA(
   CF,
   featMethod,
-  plotRef = FALSE,
-  flagSlot = NULL,
-  ids = FALSE,
-  plotLabels = FALSE
+  fitData,
+  plotData,
+  PCx = 1,
+  PCy = 2,
+  color = NULL,
+  shape = NULL,
+  plotLoadings = TRUE
 )
 }
 \arguments{
 \item{CF}{CytoFlag object}
 
-\item{featMethod}{Which generated features to plot}
+\item{featMethod}{Which features to use}
 
-\item{plotRef}{Whether to visualize reference, if available (default = TRUE)}
+\item{fitData}{Which data to fit PCA on ("test", "reference" or "all")}
 
-\item{flagSlot}{Flags to plot (NULL, "outliers", "novelties") (default = NULL)}
+\item{plotData}{Which data to plot based on PCA fit ("test", "reference" or "all")}
 
-\item{ids}{Whether to plot indices of anomalies (default = FALSE)}
+\item{PCx}{Which PC to plot along x-axis}
 
-\item{plotLabels}{Whether to plot supplied labels, overrides flagSlot}
+\item{PCy}{Which PC to plot along y-axis}
+
+\item{color}{Category used for point color ("outlier", "novelty", "labels")}
+
+\item{shape}{Category used for point shape ("outlier", "novelty", "labels")}
+
+\item{plotLoadings}{Whether to plot loadings along x and y-axis}
 }
 \value{
 PCA plot

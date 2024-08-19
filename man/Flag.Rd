@@ -4,16 +4,14 @@
 \alias{Flag}
 \title{Flag anomalies based on generated features}
 \usage{
-Flag(CF, featMethod, flagStrat, PCA = FALSE)
+Flag(CF, featMethod, flagMethod)
 }
 \arguments{
 \item{CF}{CytoFlag object}
 
 \item{featMethod}{Which features to use for anomaly detection}
 
-\item{flagStrat}{Which flaggins strategy to use ("outlier" or "novelty")}
-
-\item{PCA}{Reduce features to 2D PCA before flagging (default = FALSE)}
+\item{flagMethod}{Which type of anomaly detection to use ("outlier" or "novelty")}
 }
 \value{
 CytoFlag object
