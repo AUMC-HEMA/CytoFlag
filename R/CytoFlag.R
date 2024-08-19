@@ -141,16 +141,16 @@ addReferencedata <- function(CF, input, read = FALSE, reload = FALSE,
 #'
 #' @param CF CytoFlag object
 #' @param featMethod Which features to use for anomaly detection
-#' @param flagStrat Which flaggins strategy to use ("outlier" or "novelty")
+#' @param flagMethod Which type of anomaly detection to use ("outlier" or "novelty")
 #'
 #' @return CytoFlag object
 #' 
 #' @seealso \code{\link{generateFeatures}}
 #'
 #' @export
-Flag <- function(CF, featMethod, flagStrat){
+Flag <- function(CF, featMethod, flagMethod){
   testFeatures <- CF$features$test[[featMethod]]
-  if (flagStrat == "outlier"){
+  if (flagMethod == "outlier" | flagMethod == "outliers"){
     forest <- isotree::isolation.forest(testFeatures, sample_size = 1,
                                         ntrees = 1000,
                                         ndim = 1, seed = 42)
@@ -159,7 +159,7 @@ Flag <- function(CF, featMethod, flagStrat){
     outliers <- as.factor(ifelse(scores >= 0.5, TRUE, FALSE))
     CF$outliers[[featMethod]] <- outliers
   }
-  if (flagStrat == "novelty"){
+  if (flagMethod == "novelty" | flagMethod == "novelties"){
     refFeatures <- CF$features$ref[[featMethod]]
     nuSVM <- e1071::svm(refFeatures, type = "one-class", 
                         kernel = "radial", nu = 0.05)
