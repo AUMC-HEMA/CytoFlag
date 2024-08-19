@@ -42,7 +42,7 @@ addTestlabels <- function(CF, labels){
 #'
 #' @export
 addReferencelabels <- function(CF, labels){
-  CF[["labels"]][["ref"]] <- labels
+  CF[["labels"]][["reference"]] <- labels
   return(CF)
 }
 
