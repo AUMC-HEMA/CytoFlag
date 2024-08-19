@@ -110,103 +110,138 @@ plotHeatmap <- function(CF, featMethod, plotRef = FALSE,
 #' Plot PCA
 #'
 #' @param CF CytoFlag object
-#' @param featMethod Which generated features to plot
-#' @param plotRef Whether to visualize reference, if available (default = TRUE)
-#' @param flagSlot Flags to plot (NULL, "outliers", "novelties") (default = NULL)
-#' @param ids Whether to plot indices of anomalies (default = FALSE)
-#' @param plotLabels Whether to plot supplied labels, overrides flagSlot
+#' @param featMethod Which features to use
+#' @param fitData Which data to fit PCA on ("test", "reference" or "all")
+#' @param plotData Which data to plot based on PCA fit ("test", "reference" or "all")
+#' @param PCx Which PC to plot along x-axis
+#' @param PCy Which PC to plot along y-axis
+#' @param color Category used for point color ("outlier", "novelty", "labels")
+#' @param shape Category used for point shape ("outlier", "novelty", "labels")
+#' @param plotLoadings Whether to plot loadings along x and y-axis
 #'
 #' @return PCA plot
 #' @export
-plotPCA <- function(CF, featMethod, plotRef = FALSE,
-                    flagSlot = NULL, ids = FALSE, plotLabels = FALSE){
-  features <- prepareFeatureplot(CF, featMethod, plotRef, flagSlot)
-  testFeatures <- features$testFeatures
-  featNames <- colnames(testFeatures)
-  refFeatures <- features$refFeatures
-  testAnomaly <- features$testAnomaly
-  testLabels <- features$testLabels
-  refLabels <- features$refLabels
+plotPCA <- function(CF, featMethod, fitData, plotData, PCx = 1, PCy = 2,
+                    color = NULL, shape = NULL, plotLoadings = TRUE){
+  # Fit PCA on input data
+  if (fitData == "test"){
+    inputData <- CF$features$test[[featMethod]]
+  } else if (fitData == "reference"){
+    inputData <- CF$features$reference[[featMethod]]
+  } else if (fitData == "all"){
+    inputData <- rbind(CF$features$test[[featMethod]], CF$features$ref[[featMethod]])
+  }
+  pca <- stats::prcomp(inputData, center = TRUE, scale = TRUE)
+  x_var <- pca$sdev[PCx]^2
+  y_var <- pca$sdev[PCy]^2
   
-  if (plotRef){
-    # Reduce to first two principal components
-    PCAOutput <- reduceDim(testFeatures = testFeatures[, featNames],
-                           flagStrat = "novelty",
-                           refFeatures[, featNames])
-    testFeatures <- PCAOutput[["testFeatures"]]
-    refFeatures <- PCAOutput[["refFeatures"]]
-    testFeatures$index <- seq(1, nrow(testFeatures))
-    refFeatures$index <- seq(1, nrow(refFeatures))
-    refFeatures$category <- "reference"
-    refFeatures$labels <- refLabels
-
-    if (!is.null(flagSlot)){
-      testFeatures$anomaly <- testAnomaly
-      refFeatures$anomaly <- FALSE
+  features <- colnames(inputData)
+  
+  if (plotData == "test" | plotData == "all"){
+    testData <- CF$features$test[[featMethod]]
+    testData$slot <- "test"
+    if (is.null(color)){
+      testData$color <- "test"
+    } else if (color == "outlier"){
+      testData$color <- CF$outliers[[featMethod]]
+    } else if (color == "novelty"){
+      testData$color <- CF$novelties[[featMethod]]
+    } else if (color == "labels"){
+      testData$color <- CF$labels$test
     }
-    testFeatures$category <- "test"
-    testFeatures$labels <- testLabels
-    features <- rbind(testFeatures, refFeatures)
-  }
-  else{
-    # Reduce to first two principal components
-    PCAOutput <- reduceDim(testFeatures = testFeatures[,featNames],
-                           flagStrat = "outlier")
-    testFeatures <- PCAOutput[["testFeatures"]]
-    testFeatures$index <- seq(1, nrow(testFeatures))
-    testFeatures$category <- "test"
-    testFeatures$labels <- testLabels
-    if (!is.null(flagSlot)){
-      testFeatures$anomaly <- testAnomaly
+    if (is.null(shape)){
+      testData$shape <- "test"
+    } else if (shape == "outlier"){
+      testData$shape <- CF$outliers[[featMethod]]
+    } else if (shape == "novelty"){
+      testData$shape <- CF$novelties[[featMethod]]
+    } else if (shape == "labels"){
+      testData$shape <- CF$labels$test
     }
-    features <- testFeatures
   }
-  loadings <- PCAOutput[["loadings"]]
-  loadings$variable <- rownames(loadings)
-  PC1_var <- PCAOutput[["PC1_var"]]
-  PC2_var <- PCAOutput[["PC2_var"]]
+  if (plotData == "reference" | plotData == "all"){
+    referenceData <- CF$features$reference[[featMethod]]
+    referenceData$slot <- "reference"
+    if (is.null(color)){
+      referenceData$color <- "reference"
+    } else if (color == "outlier"){
+      referenceData$color <- "reference"
+    } else if (color == "novelty"){
+      referenceData$color <- "reference"
+    } else if (color == "labels"){
+      referenceData$color <- CF$labels$reference
+    }
+    if (is.null(shape)){
+      referenceData$shape <- "reference"
+    } else if (shape == "outlier"){
+      referenceData$shape <- "reference"
+    } else if (shape == "novelty"){
+      referenceData$shape <- "reference"
+    } else if (shape == "labels"){
+      referenceData$shape <- CF$labels$reference
+    }
+  }
+  if (plotData == "test"){
+    plotData <- testData
+  } else if (plotData == "reference"){
+    plotData <- referenceData
+  } else if (plotData == "all"){
+    plotData <- rbind(testData, referenceData)
+  }
+  output <- stats::predict(pca, newdata = plotData[, features])
+  plotData$x <- output[, paste0("PC", as.character(PCx))]
+  plotData$y <- output[, paste0("PC", as.character(PCy))]
+  plotData <- data.frame(plotData, check.names = FALSE)
   
-  loadScale <- 3
-  if (is.null(flagSlot)){
-    # Don't color the dots if there are no labels and outliers to flag
-    p <- ggplot2::ggplot(features, ggplot2::aes(x = .data[["PC1"]],
-                                                y = .data[["PC2"]]))
-  }
-  # Color the dots by either labels or flagged anomalies
-  if (plotLabels){
-    color <- "labels"
-  }
-  else {
-    color <- "anomaly"
-  }
-  p <- ggplot2::ggplot(features, ggplot2::aes(x = .data[["PC1"]],
-                                              y = .data[["PC2"]],
-                                              colour = .data[[color]])) 
-
-  p <- p + ggplot2::xlab(paste0("PC1 (", round(PC1_var, 1), "%)")) +
-           ggplot2::ylab(paste0("PC2 (", round(PC2_var, 1), "%)")) +
-           ggplot2::theme(panel.background = ggplot2::element_blank(),
-                          plot.background = ggplot2::element_blank(),
-                          panel.border = ggplot2::element_rect(colour = "black", fill = NA,
-                                                              linewidth = 0.5))
-  if (plotRef) {
-    p <- p + ggplot2::geom_point(size = 3, ggplot2::aes(shape = category))
-  }
-  else {
-    p <- p + ggplot2::geom_point(size = 3)
-  }
+  PCAPlot <- ggplot2::ggplot(plotData, ggplot2::aes(x = x, y = y, color = color, shape = shape)) +
+    ggplot2::geom_point() +
+    ggplot2::xlab(paste0("PC", PCx, " (", round(x_var, 1), "%)")) +
+    ggplot2::ylab(paste0("PC", PCy, " (", round(y_var, 1), "%)")) +
+    ggplot2::theme(panel.background = ggplot2::element_blank(),
+                   plot.background = ggplot2::element_blank(),
+                   panel.border = ggplot2::element_rect(colour = "black", fill = NA))
   
-  if (ids){
-    p <- p + ggplot2::geom_label(data = features,
-                                 ggplot2::aes(label = index),
-                                 nudge_x = 0.1, nudge_y = 0.1,
-                                 label.padding = ggplot2::unit(0.2, "lines"),
-                                 label.size = 0.25, # Add border of size 0.25
-                                 label.r = ggplot2::unit(0.1, "lines"), # Round corners slightly
-                                 fill = "white",
-                                 color = "black")
+  if (plotLoadings){
+    # Extract the loadings
+    loadings <- as.data.frame(pca$rotation)
+    sorted_PCx <- loadings[order(abs(loadings[, paste0("PC", as.character(PCx))]),
+                                 decreasing = TRUE), ]
+    sorted_PCy <- loadings[order(abs(loadings[, paste0("PC", as.character(PCy))]),
+                                 decreasing = FALSE), ]
+    loadings_x <- data.frame(Variable = rownames(sorted_PCx), 
+                             Loading = sorted_PCx[, paste0("PC", as.character(PCx))])
+    loadings_x$Variable <- factor(loadings_x$Variable, levels = loadings_x$Variable)
+    loadings_y <- data.frame(Variable = rownames(sorted_PCy), 
+                             Loading = sorted_PCy[, paste0("PC", as.character(PCy))])
+    loadings_y$Variable <- factor(loadings_y$Variable, levels = loadings_y$Variable)
+    
+    xBar <- ggplot2::ggplot(loadings_x, ggplot2::aes(x = Variable, y = Loading)) +
+      ggplot2::geom_bar(stat = "identity") +
+      ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.5, hjust = 1),
+                     axis.title.x = ggplot2::element_blank(), 
+                     axis.title.y = ggplot2::element_blank(),
+                     panel.background = ggplot2::element_blank(),
+                     plot.background = ggplot2::element_blank(),
+                     panel.border = ggplot2::element_rect(colour = "black", fill = NA))
+    
+    yBar <- ggplot2::ggplot(loadings_y, ggplot2::aes(x = Variable, y = Loading)) +
+      ggplot2::geom_bar(stat = "identity") +
+      ggplot2::coord_flip() +
+      ggplot2::theme(axis.title.x = ggplot2::element_blank(), 
+                     axis.title.y = ggplot2::element_blank(),
+                     panel.background = ggplot2::element_blank(),
+                     plot.background = ggplot2::element_blank(),
+                     panel.border = ggplot2::element_rect(colour = "black", fill = NA))
+    
+    pGrid <- gridExtra::grid.arrange(yBar, PCAPlot, NULL, xBar,     
+                                     ncol = 2,
+                                     heights = c(1, 0.35),
+                                     widths = c(0.35, 1)
+    )
+    return(pGrid)
+  } else {
+    return(PCAPlot)
   }
-  return(p)
 }
 
 
