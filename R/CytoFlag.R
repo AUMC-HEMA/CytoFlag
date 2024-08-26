@@ -161,9 +161,13 @@ Flag <- function(CF, featMethod, flagMethod){
   }
   if (flagMethod == "novelty" | flagMethod == "novelties"){
     refFeatures <- CF$features$ref[[featMethod]]
-    nuSVM <- e1071::svm(refFeatures, type = "one-class", 
-                        kernel = "radial", nu = 0.05)
-    novelties <- predict(nuSVM, testFeatures)
+    # Fit GMM on reference features
+    gmm <- mclust::Mclust(refFeatures, verbose=FALSE)
+    llrTrain <- log(mclust::dens(refFeatures, gmm$modelName, parameters = gmm$parameters))
+    threshold <- quantile(llrTrain, 0.05)
+    llrTest <- log(mclust::dens(testFeatures, gmm$modelName, parameters = gmm$parameters))
+    novelties <- llrTest <= threshold
+    names(novelties) <- CF$paths$test
     CF$novelties[[featMethod]] <- novelties
   }
   return(CF)
