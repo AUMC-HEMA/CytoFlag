@@ -1,109 +1,48 @@
-#' @export
-prepareFeatureplot <- function(CF, featMethod, plotRef, flagSlot){
-  testFeatures <- CF$features$test[[featMethod]]
-  refFeatures <- NULL
-  testAnomaly <- NULL
-  testLabels <- NULL
-  refLabels <- NULL
-
-  # Check for the presence of labels
-  if ("test" %in% names(CF$labels)){
-    testLabels <- CF$labels$test
-  }
-  
-  if (plotRef){
-    refFeatures <- CF$features$ref[[featMethod]]
-    if ("ref" %in% names(CF$labels)){
-      refLabels <- CF$labels$ref
-    }
-  }
-  
-  if (!is.null(flagSlot)){
-    if (featMethod %in% names(CF[[flagSlot]])){
-      testAnomaly <- CF[[flagSlot]][[featMethod]]
-    }
-  }
-  return(list("refFeatures" = refFeatures,
-              "testFeatures" = testFeatures,
-              "testAnomaly" = testAnomaly,
-              "testLabels" = testLabels,
-              "refLabels" = refLabels))
-}
-
-
-#' Plot Heatmap
+#' Plot heatmap
 #'
 #' @param CF CytoFlag object
-#' @param featMethod Which generated features to plot
-#' @param plotRef Whether to visualize reference, if available (default = TRUE)
-#' @param flagSlot Flags to plot (NULL, "outliers", "novelties") (default = NULL)
-#' @param plotLabels Whether to plot supplied labels
+#' @param featMethod Which features to use
+#' @param plotData Which data to plot ("test", "reference" or "all")
 #'
-#' @return Heatmap plot
+#' @return Heatmap
 #' @export
-plotHeatmap <- function(CF, featMethod, plotRef = FALSE, 
-                        flagSlot = NULL, plotLabels = FALSE){
-  features <- prepareFeatureplot(CF, featMethod, plotRef, flagSlot)
-  testFeatures <- features$testFeatures
-  featNames <- colnames(testFeatures)
-  refFeatures <- features$refFeatures
-  testAnomaly <- features$testAnomaly
-  testLabels <- features$testLabels
-  refLabels <- features$refLabels
-  
-  if (plotRef){
-    refFeatures$category <- "reference"
-    testFeatures$category <- "test"
-    testFeatures$labels <- testLabels
-    refFeatures$labels <- refLabels
-    
-    if (!is.null(flagSlot)){
-      testFeatures$anomaly <- testAnomaly
-      refFeatures$anomaly <- FALSE
-    }
-    else {
-      testFeatures$anomaly <- "NA"
-      refFeatures$anomaly <- "NA"
-    }
-    features <- rbind(testFeatures, refFeatures)
-  }
-  else{
-    testFeatures$category <- "test"
-    testFeatures$labels <- testLabels
-    if (!is.null(testAnomaly)){
-      testFeatures$anomaly <- testAnomaly
-    }
-    else{
-      testFeatures$anomaly <- "NA"
-    }
-    features <- testFeatures
+plotHeatmap <- function(CF, featMethod, plotData){
+  if (plotData == "test"){
+    inputData <- CF$features$test[[featMethod]]
+  } else if (fiplotDatatData == "reference"){
+    inputData <- CF$features$reference[[featMethod]]
+  } else if (plotData == "all"){
+    inputData <- rbind(CF$features$test[[featMethod]], CF$features$ref[[featMethod]])
   }
   
-  # Annotation data
-  annot_colors <- list(category = c("reference" = "green",
-                                    "test" = "blue"),
-                       anomaly = c("NA" = "grey",
-                                   "TRUE" = "red",
-                                   "FALSE" = "blue"))
-  cols <- c("category", "anomaly")
-  if (plotLabels){
-    cols <- c(cols, "labels")
+  # Construct dendogram for raw generated features
+  dend <- as.dendrogram(hclust(dist(inputData), method = "ward.D"))
+  
+  # Standardize the features within each channel
+  channels <- CF$metadata[[featMethod]]$channels
+  for (channel in channels){
+    cols <- grep(channel, colnames(inputData), value = TRUE)
+    mat <- as.matrix(inputData[,cols])
+    inputData[,cols] <- (mat - mean(mat)) / sd(mat)
   }
-  annot_data <- features[, cols]
-  colnames(annot_data) <- cols
   
-  # Prepare pheatmap
-  mat <- as.matrix(features[,featNames])
-  rownames(mat) <- seq(1, nrow(mat))
+  # Get # features per channnel
+  split <- rep(1:length(channels), 
+               each = ncol(inputData) / length(channels))
+  print(split)
   
-  # Plot
-  p <- ComplexHeatmap::pheatmap(mat[,featNames], cluster_cols = FALSE,
-                                cluster_rows = TRUE,
-                                # color = grDevices::colorRampPalette(rev(c("red", "white", "blue")))(100), 
-                                show_rownames = TRUE, show_colnames = TRUE, 
-                                annotation_row = annot_data,
-                                annotation_colors = annot_colors)
-  return(p)
+  # Create heatmap
+  g <- ComplexHeatmap::Heatmap(
+    as.matrix(inputData),
+    cluster_rows = dend,    
+    cluster_columns = FALSE, 
+    column_split = split,    
+    show_column_names = FALSE, 
+    show_row_names = FALSE,
+    column_title = channels,
+    heatmap_legend_param = list(title = "Z-score"),
+    row_dend_width = unit(3, "cm"))
+  return(g)
 }
 
 
@@ -117,7 +56,7 @@ plotHeatmap <- function(CF, featMethod, plotRef = FALSE,
 #' @param PCy Which PC to plot along y-axis
 #' @param color Category used for point color ("outlier", "novelty", "labels")
 #' @param shape Category used for point shape ("outlier", "novelty", "labels")
-#' @param plotBars Whether to plot loading coefficients as bars along axes
+#' @param plotBars Whether to plot loading coefficients as bars along
 #' @param plotArrows Whether to plot loadings as arrows
 #' @param nLoadings Number of loadings to plot. Selects most influential
 #'
@@ -213,20 +152,26 @@ plotPCA <- function(CF, featMethod, fitData, plotData, PCx = 1, PCy = 2,
       loadings <- loadings[order(-loadings$magnitude), ][1:nLoadings, ]
     }
     # Normalize and scale loadings for better visualization
-    scale_factor <- min(max(abs(plotData$x)), max(abs(plotData$y))) * 2
+    scale_factor <- min(max(abs(plotData$x)), max(abs(plotData$y))) * 1.5
     loadings$PCx <- loadings$PCx * scale_factor
     loadings$PCy <- loadings$PCy * scale_factor
     
+    # Update geom_label_repel to position labels closer to the end of the arrows
     PCAPlot <- PCAPlot +
-      ggplot2::geom_segment(data = loadings, ggplot2::aes(x = 0, y = 0, 
-                                                          xend = PCx * max(plotData$x) * 0.2, 
-                                                          yend = PCy * max(plotData$y) * 0.2),
+      ggplot2::geom_segment(data = loadings, 
+                            ggplot2::aes(x = 0, y = 0, 
+                                         xend = PCx * max(plotData$x) * 0.2, 
+                                         yend = PCy * max(plotData$y) * 0.2),
                             arrow = ggplot2::arrow(length = ggplot2::unit(0.2, "cm")), 
                             color = "black", size = 0.5) +
-      ggrepel::geom_label_repel(data = loadings, ggplot2::aes(x = PCx, y = PCy, 
-                                                              label = feature),
-                                fill = scales::alpha("white", 1), color = "black", box.padding = 0.1,
-                                point.padding = 0.1, segment.color = scales::alpha("white", 1))
+      ggrepel::geom_label_repel(data = loadings, 
+                                ggplot2::aes(x = PCx * max(plotData$x) * 0.2 * 0.9, 
+                                             y = PCy * max(plotData$y) * 0.2 * 0.9, 
+                                             label = feature),
+                                fill = scales::alpha("white", 1), 
+                                color = "black", 
+                                box.padding = 0.1,
+                                point.padding = 0.2)
   }
   if (plotBars) {
     loadings <- as.data.frame(pca$rotation)

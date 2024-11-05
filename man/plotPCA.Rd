@@ -35,7 +35,7 @@ plotPCA(
 
 \item{shape}{Category used for point shape ("outlier", "novelty", "labels")}
 
-\item{plotBars}{Whether to plot loading coefficients as bars along axes}
+\item{plotBars}{Whether to plot loading coefficients as bars along}
 
 \item{plotArrows}{Whether to plot loadings as arrows}
 

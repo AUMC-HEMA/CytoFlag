@@ -2,30 +2,20 @@
 % Please edit documentation in R/plotFunctions.R
 \name{plotHeatmap}
 \alias{plotHeatmap}
-\title{Plot Heatmap}
+\title{Plot heatmap}
 \usage{
-plotHeatmap(
-  CF,
-  featMethod,
-  plotRef = FALSE,
-  flagSlot = NULL,
-  plotLabels = FALSE
-)
+plotHeatmap(CF, featMethod, plotData)
 }
 \arguments{
 \item{CF}{CytoFlag object}
 
-\item{featMethod}{Which generated features to plot}
+\item{featMethod}{Which features to use}
 
-\item{plotRef}{Whether to visualize reference, if available (default = TRUE)}
-
-\item{flagSlot}{Flags to plot (NULL, "outliers", "novelties") (default = NULL)}
-
-\item{plotLabels}{Whether to plot supplied labels}
+\item{plotData}{Which data to plot ("test", "reference" or "all")}
 }
 \value{
-Heatmap plot
+Heatmap
 }
 \description{
-Plot Heatmap
+Plot heatmap
 }
