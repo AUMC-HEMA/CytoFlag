@@ -50,6 +50,9 @@ generateFeatures <- function(CF, channels, featMethod = "summary", n = 1000,
       message(paste("Using 50% of cores:", cores))
   }
   
+  # Add the channels to metadata class
+  CF[["metadata"]][[featMethod]][["channels"]] <- channels
+  
   # Summary statistics and quantiles are calculated for individual files
   if (featMethod %in% c("summary", "quantiles")){
     useAgg <- FALSE
