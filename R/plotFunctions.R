@@ -117,12 +117,15 @@ plotHeatmap <- function(CF, featMethod, plotRef = FALSE,
 #' @param PCy Which PC to plot along y-axis
 #' @param color Category used for point color ("outlier", "novelty", "labels")
 #' @param shape Category used for point shape ("outlier", "novelty", "labels")
-#' @param plotLoadings Whether to plot loadings along x and y-axis
+#' @param plotBars Whether to plot loading coefficients as bars along axes
+#' @param plotArrows Whether to plot loadings as arrows
+#' @param nLoadings Number of loadings to plot. Selects most influential
 #'
 #' @return PCA plot
 #' @export
 plotPCA <- function(CF, featMethod, fitData, plotData, PCx = 1, PCy = 2,
-                    color = NULL, shape = NULL, plotLoadings = TRUE){
+                    color = NULL, shape = NULL, plotBars = TRUE, 
+                    plotArrows = TRUE, nLoadings = NULL){
   # Fit PCA on input data
   if (fitData == "test"){
     inputData <- CF$features$test[[featMethod]]
@@ -201,9 +204,39 @@ plotPCA <- function(CF, featMethod, fitData, plotData, PCx = 1, PCy = 2,
                    plot.background = ggplot2::element_blank(),
                    panel.border = ggplot2::element_rect(colour = "black", fill = NA))
   
-  if (plotLoadings){
-    # Extract the loadings
+  if (plotArrows) {
+    loadings <- as.data.frame(pca$rotation[, c(PCx, PCy)])
+    colnames(loadings) <- c("PCx", "PCy")
+    loadings$feature <- rownames(loadings)
+    if (!is.null(nLoadings)) {
+      loadings$magnitude <- sqrt(loadings$PCx^2 + loadings$PCy^2)
+      loadings <- loadings[order(-loadings$magnitude), ][1:nLoadings, ]
+    }
+    # Normalize and scale loadings for better visualization
+    scale_factor <- min(max(abs(plotData$x)), max(abs(plotData$y))) * 2
+    loadings$PCx <- loadings$PCx * scale_factor
+    loadings$PCy <- loadings$PCy * scale_factor
+    
+    PCAPlot <- PCAPlot +
+      ggplot2::geom_segment(data = loadings, ggplot2::aes(x = 0, y = 0, 
+                                                          xend = PCx * max(plotData$x) * 0.2, 
+                                                          yend = PCy * max(plotData$y) * 0.2),
+                            arrow = ggplot2::arrow(length = ggplot2::unit(0.2, "cm")), 
+                            color = "black", size = 0.5) +
+      ggrepel::geom_label_repel(data = loadings, ggplot2::aes(x = PCx, y = PCy, 
+                                                              label = feature),
+                                fill = scales::alpha("white", 1), color = "black", box.padding = 0.1,
+                                point.padding = 0.1, segment.color = scales::alpha("white", 1))
+  }
+  if (plotBars) {
     loadings <- as.data.frame(pca$rotation)
+    loadings$magnitude <- sqrt(loadings[, paste0("PC", as.character(PCx))]^2 + 
+                                 loadings[, paste0("PC", as.character(PCy))]^2)
+    if (!is.null(nLoadings)) {
+      loadings <- loadings[order(-loadings$magnitude), ][1:nLoadings, ]
+    } else {
+      loadings <- loadings[order(-loadings[, paste0("PC", as.character(PCx))]), ]
+    }
     sorted_PCx <- loadings[order(abs(loadings[, paste0("PC", as.character(PCx))]),
                                  decreasing = TRUE), ]
     sorted_PCy <- loadings[order(abs(loadings[, paste0("PC", as.character(PCy))]),
@@ -223,7 +256,6 @@ plotPCA <- function(CF, featMethod, fitData, plotData, PCx = 1, PCy = 2,
                      panel.background = ggplot2::element_blank(),
                      plot.background = ggplot2::element_blank(),
                      panel.border = ggplot2::element_rect(colour = "black", fill = NA))
-    
     yBar <- ggplot2::ggplot(loadings_y, ggplot2::aes(x = Variable, y = Loading)) +
       ggplot2::geom_bar(stat = "identity") +
       ggplot2::coord_flip() +
@@ -232,12 +264,12 @@ plotPCA <- function(CF, featMethod, fitData, plotData, PCx = 1, PCy = 2,
                      panel.background = ggplot2::element_blank(),
                      plot.background = ggplot2::element_blank(),
                      panel.border = ggplot2::element_rect(colour = "black", fill = NA))
-    
-    pGrid <- gridExtra::grid.arrange(yBar, PCAPlot, NULL, xBar,     
-                                     ncol = 2,
-                                     heights = c(1, 0.35),
-                                     widths = c(0.35, 1)
-    )
+    pGrid <- gridExtra::grid.arrange(yBar, PCAPlot, 
+                                   ggplot2::ggplot() + ggplot2::theme_void(), 
+                                   xBar,
+                                   ncol = 2,
+                                   heights = c(1, 0.35),
+                                   widths = c(0.35, 1))
     return(pGrid)
   } else {
     return(PCAPlot)

@@ -13,7 +13,9 @@ plotPCA(
   PCy = 2,
   color = NULL,
   shape = NULL,
-  plotLoadings = TRUE
+  plotBars = TRUE,
+  plotArrows = TRUE,
+  nLoadings = NULL
 )
 }
 \arguments{
@@ -33,7 +35,11 @@ plotPCA(
 
 \item{shape}{Category used for point shape ("outlier", "novelty", "labels")}
 
-\item{plotLoadings}{Whether to plot loadings along x and y-axis}
+\item{plotBars}{Whether to plot loading coefficients as bars along axes}
+
+\item{plotArrows}{Whether to plot loadings as arrows}
+
+\item{nLoadings}{Number of loadings to plot. Selects most influential}
 }
 \value{
 PCA plot
