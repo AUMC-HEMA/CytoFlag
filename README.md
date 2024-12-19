@@ -22,7 +22,7 @@ if (!requireNamespace("devtools", quietly = TRUE)) {
   install.packages("devtools")
 }
 
-devtools::install_github("AUMC-HEMA/MSGMM")
+devtools::install_github("timmocking/CytoFlag")
 ```
 
 After installation, we refer to the documentation for further use.
