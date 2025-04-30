@@ -148,6 +148,7 @@ addReferencedata <- function(CF, input, read = FALSE, reload = FALSE,
 #' @seealso \code{\link{generateFeatures}}
 #'
 #' @export
+#' @import mclust
 Flag <- function(CF, featMethod, flagMethod){
   testFeatures <- CF$features$test[[featMethod]]
   if (flagMethod == "outlier" | flagMethod == "outliers"){

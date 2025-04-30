@@ -166,13 +166,21 @@ CF <- addTestdata(CF, files)
 # The channels of the simulated data are letters of the alphabet
 channels <- LETTERS[1:8]
 CF <- generateFeatures(CF, channels = channels, featMethod = "quantiles")
-CF <- Flag(CF, featMethod = "quantiles", flagStrat = "outlier")
+CF <- Flag(CF, featMethod = "quantiles", flagMethod = "outlier")
 head(CF$outliers$quantiles)
 ```
 
 ### Flagging anomalies using novelty detection
 
-TO-DO
+```{r}
+CF <- CytoFlag() 
+CF <- addReferencedata(CF, files)
+CF <- addTestdata(CF, files)
+# The channels of the simulated data are letters of the alphabet
+channels <- LETTERS[1:8]
+CF <- generateFeatures(CF, channels = channels, featMethod = "quantiles")
+CF <- Flag(CF, featMethod = "quantiles", flagMethod = "novelty")
+```
 
 ## Visualizations
 
