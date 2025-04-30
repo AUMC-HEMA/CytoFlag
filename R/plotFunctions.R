@@ -41,7 +41,7 @@ plotHeatmap <- function(CF, featMethod, plotData){
     show_row_names = FALSE,
     column_title = channels,
     heatmap_legend_param = list(title = "Z-score"),
-    row_dend_width = unit(3, "cm"))
+    row_dend_width = grid::unit(3, "cm"))
   return(g)
 }
 
