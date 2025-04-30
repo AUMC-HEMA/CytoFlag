@@ -29,8 +29,6 @@ plotHeatmap <- function(CF, featMethod, plotData){
   # Get # features per channnel
   split <- rep(1:length(channels), 
                each = ncol(inputData) / length(channels))
-  print(split)
-  
   # Create heatmap
   g <- ComplexHeatmap::Heatmap(
     as.matrix(inputData),
@@ -63,8 +61,8 @@ plotHeatmap <- function(CF, featMethod, plotData){
 #' @return PCA plot
 #' @export
 plotPCA <- function(CF, featMethod, fitData, plotData, PCx = 1, PCy = 2,
-                    color = NULL, shape = NULL, plotBars = TRUE, 
-                    plotArrows = TRUE, nLoadings = NULL){
+                    color = NULL, shape = NULL, plotBars = FALSE, 
+                    plotArrows = FALSE, nLoadings = NULL){
   # Fit PCA on input data
   if (fitData == "test"){
     inputData <- CF$features$test[[featMethod]]
@@ -135,13 +133,15 @@ plotPCA <- function(CF, featMethod, fitData, plotData, PCx = 1, PCy = 2,
   plotData$y <- output[, paste0("PC", as.character(PCy))]
   plotData <- data.frame(plotData, check.names = FALSE)
   
-  PCAPlot <- ggplot2::ggplot(plotData, ggplot2::aes(x = x, y = y, color = color, shape = shape)) +
+  PCAPlot <- ggplot2::ggplot(plotData, ggplot2::aes(x = x, y = y, color = color, 
+                                                    shape = shape)) +
     ggplot2::geom_point() +
     ggplot2::xlab(paste0("PC", PCx, " (", round(x_var, 1), "%)")) +
     ggplot2::ylab(paste0("PC", PCy, " (", round(y_var, 1), "%)")) +
     ggplot2::theme(panel.background = ggplot2::element_blank(),
                    plot.background = ggplot2::element_blank(),
-                   panel.border = ggplot2::element_rect(colour = "black", fill = NA))
+                   panel.border = ggplot2::element_rect(colour = "black", 
+                                                        fill = NA))
   
   if (plotArrows) {
     loadings <- as.data.frame(pca$rotation[, c(PCx, PCy)])
@@ -195,12 +195,14 @@ plotPCA <- function(CF, featMethod, fitData, plotData, PCx = 1, PCy = 2,
     
     xBar <- ggplot2::ggplot(loadings_x, ggplot2::aes(x = Variable, y = Loading)) +
       ggplot2::geom_bar(stat = "identity") +
-      ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.5, hjust = 1),
+      ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 90, vjust = 0.5, 
+                                                         hjust = 1),
                      axis.title.x = ggplot2::element_blank(), 
                      axis.title.y = ggplot2::element_blank(),
                      panel.background = ggplot2::element_blank(),
                      plot.background = ggplot2::element_blank(),
-                     panel.border = ggplot2::element_rect(colour = "black", fill = NA))
+                     panel.border = ggplot2::element_rect(colour = "black", 
+                                                          fill = NA))
     yBar <- ggplot2::ggplot(loadings_y, ggplot2::aes(x = Variable, y = Loading)) +
       ggplot2::geom_bar(stat = "identity") +
       ggplot2::coord_flip() +
@@ -208,7 +210,8 @@ plotPCA <- function(CF, featMethod, fitData, plotData, PCx = 1, PCy = 2,
                      axis.title.y = ggplot2::element_blank(),
                      panel.background = ggplot2::element_blank(),
                      plot.background = ggplot2::element_blank(),
-                     panel.border = ggplot2::element_rect(colour = "black", fill = NA))
+                     panel.border = ggplot2::element_rect(colour = "black", 
+                                                          fill = NA))
     pGrid <- gridExtra::grid.arrange(yBar, PCAPlot, 
                                    ggplot2::ggplot() + ggplot2::theme_void(), 
                                    xBar,
