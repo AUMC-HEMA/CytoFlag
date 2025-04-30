@@ -161,7 +161,7 @@ Flag <- function(CF, featMethod, flagMethod){
     CF$outliers[[featMethod]] <- outliers
   }
   if (flagMethod == "novelty" | flagMethod == "novelties"){
-    refFeatures <- CF$features$ref[[featMethod]]
+    refFeatures <- CF$features$reference[[featMethod]]
     # Fit GMM on reference features
     gmm <- mclust::Mclust(refFeatures, verbose=FALSE)
     llrTrain <- log(mclust::dens(refFeatures, gmm$modelName, parameters = gmm$parameters))
