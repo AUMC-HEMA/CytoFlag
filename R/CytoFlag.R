@@ -142,6 +142,8 @@ addReferencedata <- function(CF, input, read = FALSE, reload = FALSE,
 #' @param CF CytoFlag object
 #' @param featMethod Which features to use for anomaly detection
 #' @param flagMethod Which type of anomaly detection to use ("outlier" or "novelty")
+#' @param outlier_threshold Isolation score threshold for outlier detection.
+#' @param novelty_threshold GMM quantile threshold for novelty detection.
 #'
 #' @return CytoFlag object
 #' 
@@ -149,7 +151,8 @@ addReferencedata <- function(CF, input, read = FALSE, reload = FALSE,
 #'
 #' @export
 #' @import mclust
-Flag <- function(CF, featMethod, flagMethod){
+Flag <- function(CF, featMethod, flagMethod, outlier_threshold=0.5,
+                 novelty_threshold=0.05){
   testFeatures <- CF$features$test[[featMethod]]
   if (flagMethod == "outlier" | flagMethod == "outliers"){
     forest <- isotree::isolation.forest(testFeatures, sample_size = 1,
@@ -157,7 +160,7 @@ Flag <- function(CF, featMethod, flagMethod){
                                         ndim = 1, seed = 42)
     scores <- stats::predict(forest, testFeatures)
     # Scores > 0.5 are most likely outliers according to the original paper
-    outliers <- as.factor(ifelse(scores >= 0.5, TRUE, FALSE))
+    outliers <- as.factor(ifelse(scores >= outlier_threshold, TRUE, FALSE))
     CF$outliers[[featMethod]] <- outliers
   }
   if (flagMethod == "novelty" | flagMethod == "novelties"){
@@ -165,7 +168,7 @@ Flag <- function(CF, featMethod, flagMethod){
     # Fit GMM on reference features
     gmm <- mclust::Mclust(refFeatures, verbose=FALSE)
     llrTrain <- log(mclust::dens(refFeatures, gmm$modelName, parameters = gmm$parameters))
-    threshold <- quantile(llrTrain, 0.05)
+    threshold <- quantile(llrTrain, novelty_threshold)
     llrTest <- log(mclust::dens(testFeatures, gmm$modelName, parameters = gmm$parameters))
     novelties <- llrTest <= threshold
     names(novelties) <- CF$paths$test

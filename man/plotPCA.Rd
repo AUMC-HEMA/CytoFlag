@@ -13,8 +13,8 @@ plotPCA(
   PCy = 2,
   color = NULL,
   shape = NULL,
-  plotBars = TRUE,
-  plotArrows = TRUE,
+  plotBars = FALSE,
+  plotArrows = FALSE,
   nLoadings = NULL
 )
 }

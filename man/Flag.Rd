@@ -4,7 +4,13 @@
 \alias{Flag}
 \title{Flag anomalies based on generated features}
 \usage{
-Flag(CF, featMethod, flagMethod)
+Flag(
+  CF,
+  featMethod,
+  flagMethod,
+  outlier_threshold = 0.5,
+  novelty_threshold = 0.05
+)
 }
 \arguments{
 \item{CF}{CytoFlag object}
@@ -12,6 +18,10 @@ Flag(CF, featMethod, flagMethod)
 \item{featMethod}{Which features to use for anomaly detection}
 
 \item{flagMethod}{Which type of anomaly detection to use ("outlier" or "novelty")}
+
+\item{outlier_threshold}{Isolation score threshold for outlier detection.}
+
+\item{novelty_threshold}{GMM quantile threshold for novelty detection.}
 }
 \value{
 CytoFlag object
