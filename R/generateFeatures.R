@@ -1,10 +1,10 @@
 #' @noRd
 getAggregate <- function(CF, aggSize, aggSlot = "auto"){
+  set.seed(42)
   if (aggSlot == "auto"){
     if ("reference" %in% names(CF$data)){
       agg <- as.matrix((dplyr::bind_rows(CF$data$reference)))
       # Perform extra sampling in case extra data has been added
-      set.seed(42)
       agg <- agg[sample(c(1:nrow(agg), aggSize)), ]
     } else if ("reference" %in% names(CF$paths)){
       CF <- addReferencedata(CF, CF$paths$reference, read = TRUE, reload = TRUE, 
@@ -12,7 +12,6 @@ getAggregate <- function(CF, aggSize, aggSlot = "auto"){
       agg <- as.matrix((dplyr::bind_rows(CF$data$reference)))
     } else if ("test" %in% names(CF$data)){
       agg <- as.matrix((dplyr::bind_rows(CF$data$test)))
-      set.seed(42)
       agg <- agg[sample(c(1:nrow(agg), aggSize)), ]
     } else if ("test" %in% names(CF$paths)){
       CF <- addTestdata(CF, CF$paths$test, read = TRUE, reload = TRUE, 
@@ -20,8 +19,21 @@ getAggregate <- function(CF, aggSize, aggSlot = "auto"){
       agg <- as.matrix((dplyr::bind_rows(CF$data$test)))
     }
   } else {
+    # Check if aggSlot is already loaded
+    if (aggSlot %in% names(CF$data)){
+      agg <- as.matrix((dplyr::bind_rows(CF$data[[aggSlot]])))
+      # Perform extra sampling in case extra data has been added
+      agg <- agg[sample(c(1:nrow(agg), aggSize)), ]
+    } else if (aggSlot %in% names(CF$paths)){
+      if (aggSlot == "test"){
+        CF <- addTestdata(CF, CF$paths[[aggSlot]], read = TRUE, reload = TRUE, 
+                               aggSize = aggSize)
+      } else if (aggSlot == "reference"){
+        CF <- addReferencedata(CF, CF$paths[[aggSlot]], read = TRUE, reload = TRUE, 
+                               aggSize = aggSize)
+      }
+    }
     agg <- as.matrix((dplyr::bind_rows(CF$data[[aggSlot]])))
-    set.seed(42)
     agg <- agg[sample(c(1:nrow(agg), aggSize)), ]
   }
   return(agg)
