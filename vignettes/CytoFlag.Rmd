@@ -3,10 +3,6 @@ title: "CytoFlag"
 author:
 - name: Tim Mocking
   affiliation: AmsterdamUMC Cancer Center
-- name: Yejin Park
-  affiliation: AmsterdamUMC Cancer Center
-- name: Costa Bachas
-  affiliation: AmsterdamUMC Cancer Center
 # package: CytoFlag
 output:
   # BiocStyle::pdf_document
@@ -27,58 +23,72 @@ vignette: |
 
 # Setting up a CytoFlag workflow
 
-The CytoFlag workflow takes file paths of .fcs files as input. 
+The CytoFlag workflow takes the file paths of FCS files as input. 
 
-We provide the generateDemo function which generates a folder containing a small
-set of FCS files which is used in this tutorial.
+The CytoFlag package contains a function "generateDemo". That generates a folder 
+containing a small set of FCS files which will be used throughout this tutorial.
 
-## Loading the demo data
+## Loading demo data
 
 ```{r}
+library(CytoFlag)
+
 # Create a folder "demo_data" containing 100 small FCS files for demonstration
+# Each file contains 1000 events with 8 channels
 generateDemo(dir = "demo_data", nFiles = 100, nCells = 1000, nChannels = 8)
 
 # List the generated files
 files <- list.files("demo_data", full.names = TRUE)
-head(files)
+head(files, 3) # Show the names of the first 3 files
 ```
 
 ## Initializing a CytoFlag object
 
-The first step is always to initialize a CytoFlag object. This object stores all 
-relevant information, from file paths to generated features and outputs.
+The first step in the workflow is creating a CytoFlag object.
+This object stores all relevant information, from metadata, to file paths to 
+generated features and outputs.
 
 ```{r}
 CF <- CytoFlag()
 ```
+
+This "empty" object contains almost nothing at this point. It contains a function
+that defines the way will pre-process each FCS file and some variables
+to make this work with parallel processing. Modifying this is more advanced
+and will discussed later in this tutorial.
+
+Let's continue with adding some data.
 
 ## Adding data to a CytoFlag object
 
-### Adding cytometry data
+### Adding FCS data
 
-If you want to use CytoFlag for outlier detection, you add all the data as 
-"test data". This means that all models are trained and outliers are detected
-on the full dataset.
+Every workflow depends on a set of "test" files. These are the files you want
+to evaluate for potential anomalies. 
 
 ```{r}
-CF <- CytoFlag()
-CF <- addTestdata(CF, files) 
+# Adding test files to a CytoFlag object
+CF <- CytoFlag() # Intialize empty object
+files <- list.files("demo_data", full.names = TRUE) # Get file paths
+CF <- addTestdata(CF, files) # Add file paths to object
 ```
 
-If you want to use CytoFlag for novelty, you have to define reference data as
+If you want to perform novelty detection, you have to define reference data as
 well. In this case, models will be trained on the reference data, before identifying
-novelties in the test data.
+novelties in the test data. 
 
 ```{r}
-CF <- CytoFlag()
-CF <- addReferencedata(CF, files[1:50]) 
-CF <- addTestdata(CF, files[51:100]) 
+CF <- CytoFlag() # Intialize empty object
+files <- list.files("demo_data", full.names = TRUE) # Get file paths
+CF <- addReferencedata(CF, files[1:50]) # Add first 50 files as "test"
+CF <- addTestdata(CF, files[51:100]) # Add last 50 files as "reference"
 ```
 
-### Adding labels
+### Adding metadata
 
-If you want to visualize different known variables in CytoFlag visualizations,
-you have to add these to the CytoFlag object as follows:
+You might also want to apply known experimental conditions such as the cytometer
+that was used or lot IDs. In the current version, we support adding one categorical
+label per file. You can add this to the object with the add label functions.
 
 ```{r}
 # Generate some random batches
@@ -92,6 +102,262 @@ head(refLabels)
 CF <- addReferencelabels(CF, refLabels)
 CF <- addTestlabels(CF, testLabels)
 ```
+
+### Inspecting the CytoFlab object structure
+
+Let's inspect what the CytoFlag object now looks like. We have different slots:
+
+```{r}
+print(names(CF))
+```
+
+You can see we know have added slots for "paths" and "labels" that we added
+with the add data and add label functions.
+
+These paths are subdivided into test and reference categories:
+
+```{r}
+print(names(CF$paths))
+```
+
+Inspecting these slots will reveal your input data.
+
+```{r}
+print((CF$paths$test))
+```
+
+## Feature generation
+
+Before we can continue with visualizations and anomaly detection, we have to generate
+some features. We recommend quantile-based features.
+
+Note that you will have to supply the channel names in the function. If these
+do not match across files, the function will return an error.
+
+### General example
+
+```{r}
+# Add test data
+CF <- CytoFlag()
+files <- list.files("demo_data", full.names = TRUE)
+CF <- addTestdata(CF, files)
+
+channels <- LETTERS[1:8] # The channel names of demo_data are A-H
+CF <- generateFeatures(CF, channels = channels, featMethod = "quantiles")
+head(CF$features$test$quantiles)
+```
+Note that by default, the function will use 50% of your cores for parallel processing.
+However, this is only really necessary for larger datasets. You can disable
+parallel processing with the "parallel" argument. You can also define the number
+of cores with "cores".
+
+Note that if you run the function again, CytoFlag will not do anything. This is
+because it automatically detects if all the files have generated features.
+If you want to run the function again, you can force it with "recalculate".
+
+```{r}
+# This will not do anything...
+CF <- generateFeatures(CF, channels = channels, featMethod = "quantiles")
+```
+
+```{r}
+# Force CytoFlag to recalculate features for previous supplied files
+CF <- generateFeatures(CF, channels = channels, featMethod = "quantiles",
+                       recalculate=TRUE)
+```
+
+This also means that you can add additional test and reference files and generate
+features **just** for these new files. 
+
+```{r}
+CF <- CytoFlag()
+CF <- addTestdata(CF, files[0:50])
+
+channels <- LETTERS[1:8]
+# Generate features for the first 50 files
+CF <- generateFeatures(CF, channels = channels, featMethod = "quantiles")
+# Print the number of features
+print(nrow(CF$features$test$quantiles))
+
+# Now add the other 50 files
+CF <- addTestdata(CF, files[51:100])
+CF <- generateFeatures(CF, channels = channels, featMethod = "quantiles")
+# Print the number of features
+print(nrow(CF$features$test$quantiles))
+``` 
+
+### Generating features for novelty detection
+
+If you want to perform novelty detection, you have to generate features from
+the reference cohort. In this example, we use the earth mover's distance (EMD) 
+for feature generation. Because these distances are calculated based on an aggregated
+set of cells, it is important to use cells from the reference cohort.
+
+If reference data is present, this is automatically used for aggregation.
+
+```{r, eval=FALSE}
+CF <- CytoFlag()
+CF <- addTestdata(CF, files[1:50]) # First 50 files as test
+CF <- addReferencedata(CF, files[51:100]) # Last 50 files as reference
+CF <- generateFeatures(CF, channels = channels, featMethod = "EMD")
+```
+
+## Visualizations
+
+Let's make some visualizations.  
+
+```{r}
+# General set-up with some test and reference data
+CF <- CytoFlag() 
+CF <- addTestdata(CF, files[1:50])
+CF <- addReferencedata(CF, files[51:100])
+CF <- generateFeatures(CF, channels = channels, featMethod = "quantiles")
+```
+
+## Principal component analysis (PCA)
+
+Plotting the principal components is one of the easiest ways to visualize
+the patterns in your dataset. 
+
+The "plotPCA" function is quite versatile but not very straightforward. It has 
+three mandatory arguments:
+
+* featMethod
+* fitData
+* plotData
+
+featMethod defines which features to plot. This is to deal with situations where
+you generated features for both quantiles and EMD.
+
+fitData defines which data source to use for calculating the PCs. This allows you
+to "project" data from test samples in a reference set PCA, etc.
+
+plotData defines which data to plot. This allows you to plot only test or reference,
+or all samples.
+
+```{r}
+# Plot a PCA for only the test samples
+plotPCA(CF, featMethod = "quantiles", fitData = "test", plotData = "test")
+```
+```{r}
+# Also plot the reference samples
+plotPCA(CF, featMethod = "quantiles", fitData = "test", plotData = "all")
+```
+
+You can also define the PCs you want to plot on the x and y-axes.
+
+```{r}
+# Plot PC3 vs. PC4
+plotPCA(CF, featMethod = "quantiles", fitData = "test", plotData = "all",
+        PCx = 3, PCy = 4)
+```
+
+Sometimes, you are interested in which features influence the orientation of the 
+PCA plot. You can evaluate this with two ways.
+
+The first method is to plot the loadings within the plot. This can be set-up with
+"plotArrows". However, as we have many features, it sometimes makes sense to only
+plot the first couple of important ones ("nLoadings").
+
+```{r}
+# Plot the direction of the most influential feature
+plotPCA(CF, featMethod = "quantiles", fitData = "test", plotData = "all",
+        plotArrows = TRUE, nLoadings = 1)
+```
+You can also create a barplot alongside the x and y-axis to show which features
+influence the PCs plotted on the x and y axis.
+
+```{r}
+plotPCA(CF, featMethod = "quantiles", fitData = "test", plotData = "all",
+        plotBars = TRUE, nLoadings = 10)
+```
+Lastly, we can control the shape and color used by the plot. We will add some
+experimental conditions and color those, while retaining the distinction between
+test and reference by shape.
+
+```{r}
+refLabels <- sample(c("batch1", "batch2"), 50, replace = TRUE)
+testLabels <- sample(c("batch1", "batch2"), 50, replace = TRUE)
+CF <- addReferencelabels(CF, refLabels)
+CF <- addTestlabels(CF, testLabels)
+```
+
+```{r}
+plotPCA(CF, featMethod = "quantiles", fitData = "test", plotData = "all",
+        color = "labels")
+```
+### Advanced customization of PCA plots
+
+The lay-out and colors of the plot might not be "publication ready". However,
+because the plot function returns a ggplot object, you can modify according to
+your own desire.
+
+```{r}
+p <- plotPCA(CF, featMethod = "quantiles", fitData = "test", plotData = "all",
+             color = "labels")
+
+# Modify ggplot settings
+library(ggplot2)
+p <- p + 
+  scale_color_manual(values = c("batch1" = "red", "batch2" = "blue"))
+plot(p)
+```
+## Heatmap
+
+You can also plot the featurers in a heatmap. We use the ComplexHeatmap package.
+
+```{r}
+plotHeatmap(CF, featMethod = "quantiles", plotData = "test")
+```
+
+## Boxplots
+
+TODO
+
+
+
+
+## Flagging anomalies
+
+Now let's figure out if we have any anomalies. For this, we use the "Flag" function.
+
+You always need to define based on which feature set you want to flag anomalies.
+
+### Flagging anomalies using outlier detection
+
+```{r}
+CF <- CytoFlag() 
+CF <- addTestdata(CF, files)
+CF <- generateFeatures(CF, channels = channels, featMethod = "quantiles")
+CF <- Flag(CF, featMethod = "quantiles", flagMethod = "outlier")
+```
+
+You can identify the outliers in the CytoFlag object.
+
+```{r}
+head(CF$outliers$quantiles)
+```
+
+### Flagging anomalies using novelty detection
+
+```{r}
+CF <- CytoFlag() 
+CF <- addReferencedata(CF, files)
+CF <- addTestdata(CF, files)
+# The channels of the simulated data are letters of the alphabet
+channels <- LETTERS[1:8]
+CF <- generateFeatures(CF, channels = channels, featMethod = "quantiles")
+CF <- Flag(CF, featMethod = "quantiles", flagMethod = "novelty")
+```
+
+
+
+
+
+
+
+
+
 
 ### Custom pre-processing
 
@@ -128,78 +394,10 @@ CF <- addTestdata(CF, files[1], read = TRUE, aggSize = 1000)
 hist(CF$data$test[[files[1]]][, 1], main = files[1], xlab = "Scaled expression")
 ```
 
-## Feature generation
 
-### Generating features for outlier detection
 
-```{r}
-CF <- CytoFlag() 
-CF <- addTestdata(CF, files)
-# The channels of the simulated data are letters of the alphabet
-channels <- LETTERS[1:8]
-CF <- generateFeatures(CF, channels = channels, featMethod = "quantiles")
-head(CF$features$test$quantiles)
-```
 
-### Generating features for novelty detection
 
-In this example, we use the earth mover's distance (EMD). Because these distances
-are calculated against an aggregated set of cells.
-
-If reference data is present, this is automatically used for aggregation.
-
-```{r, eval=FALSE}
-CF <- CytoFlag()
-CF <- addReferencedata(CF, files[51:100]) 
-CF <- addTestdata(CF, files[1:50]) 
-CF <- generateFeatures(CF, channels = channels, featMethod = "EMD")
-head(CF$features$test$EMD)
-```
-
-## Flagging anomalies
-
-### Flagging anomalies using outlier detection
-
-```{r}
-CF <- CytoFlag() 
-CF <- addTestdata(CF, files)
-# The channels of the simulated data are letters of the alphabet
-channels <- LETTERS[1:8]
-CF <- generateFeatures(CF, channels = channels, featMethod = "quantiles")
-CF <- Flag(CF, featMethod = "quantiles", flagMethod = "outlier")
-head(CF$outliers$quantiles)
-```
-
-### Flagging anomalies using novelty detection
-
-```{r}
-CF <- CytoFlag() 
-CF <- addReferencedata(CF, files)
-CF <- addTestdata(CF, files)
-# The channels of the simulated data are letters of the alphabet
-channels <- LETTERS[1:8]
-CF <- generateFeatures(CF, channels = channels, featMethod = "quantiles")
-CF <- Flag(CF, featMethod = "quantiles", flagMethod = "novelty")
-```
-
-## Visualizations
-
-```{r}
-CF <- CytoFlag() 
-CF <- addReferencedata(CF, files[0:50])
-CF <- addTestdata(CF, files[51:100])
-# The channels of the simulated data are letters of the alphabet
-channels <- LETTERS[1:8]
-CF <- generateFeatures(CF, channels = channels, featMethod = "quantiles",
-                       quantileDist = 0.2)
-```
-
-```{r}
-plotHeatmap(CF, featMethod = "quantiles", plotRef = TRUE)
-```
-```{r}
-# plotPCA(CF, featMethod = "quantiles", plotRef = TRUE)
-```
 
 ### Visualizing marker distributions
 
